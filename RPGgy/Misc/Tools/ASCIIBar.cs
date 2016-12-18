@@ -25,9 +25,9 @@
             }
             return new string(progress);
         }
-        public static string DrawProgressBar(uint first,uint max)
+        public static string DrawProgressBar(int first,int max)
         {
-            var percent = (first / max) * 100;
+            var percent = (float)(first / (double)max) * 100;
             char[] progress = new char[22];
             progress[0] = '[';
             progress[21] = ']';

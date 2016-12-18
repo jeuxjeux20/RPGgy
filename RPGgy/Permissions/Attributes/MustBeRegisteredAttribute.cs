@@ -12,6 +12,7 @@ namespace RPGgy.Permissions.Attributes
 {
     class MustBeRegisteredAttribute : PreconditionAttribute
     {
+        
         public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command, IDependencyMap map)
         {
             var isThere = GameContext.WarriorsList.Any(war => war.IsOk(context.User));

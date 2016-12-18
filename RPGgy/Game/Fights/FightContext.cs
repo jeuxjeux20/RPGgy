@@ -9,11 +9,11 @@ namespace RPGgy.Game.Fights
 {
     public sealed class FightContext
     {
-        private IWarriorUser Attacker { get; }
+        private IWarriorUser Attacker { get; } 
         private IWarriorUser Opponent { get; }
         public static Dictionary<Tuple<IUser, IUser>, FightContext> ActualContexts { get; } = new Dictionary<Tuple<IUser, IUser>, FightContext>();
         private readonly Tuple<IUser, IUser> _actualTuple;
-        public IWarriorUser TurnOfEntity { get; private set; }
+        public IWarriorUser TurnOfEntity { get; private set; } // Ready guys ? 3, 2, 1... GO ! get, set, then get, then set, that's perfect ! continue ! ; get, set, mmm sir sorry i've hit a semicolon
         public IUser TurnOfUser => TurnOfEntity.AttachedUser;
         public IWarriorUser TurnOfEnemy => TurnOfEntity == Attacker ? Opponent : Attacker;
         public IUser TurnOfEnemyUser => TurnOfEnemy.AttachedUser;
@@ -28,18 +28,22 @@ namespace RPGgy.Game.Fights
         private static Random Randomiser { get; } = new Random();
         public Tuple<int,bool> Attack()
         {
-            return TurnOfEntity.AttackEntity(this, TurnOfEnemy);
-            TurnChange();
+            var myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy);  
+            return myAwesomeResult;
             
         }
 
-        private void TurnChange()
+        public void FinishedAction()
         {
-            TurnOfEntity = TurnOfEnemy;
+            TurnChange();
         }
+        private void TurnChange() // how does it works !
+        {
+            TurnOfEntity = TurnOfEnemy; // 1 idk swap
+        } // now, void is awaiting you, but you can't await void (in some cases). paradox = true = paradox;
         public void SomeoneDied(IWarriorUser who)
         {
-            OnDone(new FightContextTerminatedEventArgs(who));
+            OnDone(new FightContextTerminatedEventArgs(who,Opponent));
             ActualContexts.Remove(_actualTuple);
             Attacker.AttachedFightContext = null;
             Opponent.AttachedFightContext = null;
@@ -55,11 +59,12 @@ namespace RPGgy.Game.Fights
 
     public class FightContextTerminatedEventArgs
     {
-        public IWarriorUser WhoDidUser { get; private set; }
-
-        public FightContextTerminatedEventArgs(IWarriorUser whoUser)
+        public IWarriorUser WhoDiedUser { get; private set; }
+        public IWarriorUser WinUser { get; private set; }
+        public FightContextTerminatedEventArgs(IWarriorUser whoUser,IWarriorUser woonerUser)
         {
-            WhoDidUser = whoUser;
+            WhoDiedUser = whoUser;
+            WinUser = woonerUser;
         }
     }
 }

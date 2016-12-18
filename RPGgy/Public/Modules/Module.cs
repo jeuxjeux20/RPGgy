@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -52,8 +53,8 @@ namespace RPGgy.Public.Modules
         [Command("fightstart")]
         [Summary("Let's start a fight against someone")]
         [MustBeRegistered]
-        
-        public async Task Fightstart([MustBeRegisteredParameter] IUser toFight)
+        [MusntBeInFight]
+        public async Task Fightstart([MustBeRegisteredParameter] [MusntBeInFightParameter] IUser toFight)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             if (user == null)
@@ -70,8 +71,12 @@ namespace RPGgy.Public.Modules
             await ReplyAsync("owo");
             new FightContext(user, usertoFight).Done += async (sender, e) =>
             {
-                await ReplyAsync($"Woo ! {e.WhoDidUser.AttachedUser.Username} died !");
+                await ReplyAsync($"Woo ! {e.WhoDiedUser.AttachedUser.Username} died !");
+                await ReplyAsync($@"Rewards for {e.WinUser.AttachedUser.Username} :
+90 XP");
+                e.WinUser.Experience += 90;
             };
+
         }
 
         [Command("Attack")]
@@ -93,9 +98,10 @@ namespace RPGgy.Public.Modules
                 await ReplyAsync(
                     $@"{(results.Item2 ? "CRITICAL ! " : "")}{user.AttachedFightContext.TurnOfUser.Username} dealt {results.Item1} damage !
 {user.AttachedFightContext.TurnOfEnemyUser.Username} : {user.AttachedFightContext.TurnOfEnemy.LifePoints} HP
-{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar((uint)user.AttachedFightContext.TurnOfEnemy.LifePoints,user.AttachedFightContext.TurnOfEnemy.MaxLife)}
+{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEnemy.LifePoints,(int)user.AttachedFightContext.TurnOfEnemy.MaxLife)}
 {user.AttachedFightContext.TurnOfUser.Username} : {user.AttachedFightContext.TurnOfEntity.LifePoints} HP
-{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar((uint)user.AttachedFightContext.TurnOfEntity.LifePoints,user.AttachedFightContext.TurnOfEntity.MaxLife)}");
+{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEntity.LifePoints,(int)user.AttachedFightContext.TurnOfEntity.MaxLife)}");
+            user.AttachedFightContext.FinishedAction();
         }
 
         [Command("forcejson")]
@@ -167,6 +173,7 @@ namespace RPGgy.Public.Modules
         [Command("stats")]
         [Summary("Get the stats of your fighter !")]
         [MustBeRegistered]
+        [SuppressMessage("ReSharper", "PossibleNullReferenceException")] // because it's checked with MuseBeRegistered
         public async Task Stats()
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
@@ -233,6 +240,11 @@ namespace RPGgy.Public.Modules
                                      builder.Value = user.StatPoints.ToString();
                                      builder.IsInline = true;
                                  })
+                                 .AddField(builder => 
+                                 builder.WithName("HP")
+                                        .WithValue($"{user.LifePoints}/{user.MaxLife}")
+                                        .WithIsInline(true)
+                                 )                                
                                  .WithTitle($"Stats for {user.AttachedUser.Username}"));
         }
 

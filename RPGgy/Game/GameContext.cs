@@ -77,7 +77,8 @@ namespace RPGgy.Game
                 IsBusy.Release();
             });
         }
-        internal static void DeserializeCore()
+
+        private static void DeserializeCore()
         {
             Serializing = true;
             using (var sr = new StreamReader("warriors.json"))
@@ -85,7 +86,7 @@ namespace RPGgy.Game
                 if (sr.ReadToEnd().Length < 2) throw new FileNotFoundException();
                 sr.BaseStream.Position = 0;
                 var myLovelyReader = new JsonTextReader(sr);
-
+                
                 WarriorsList =
                     JsonSerializer.Create().Deserialize<ObservableCollection<WarriorUser>>(myLovelyReader);
                 Program.Log(new LogMessage(LogSeverity.Info, "JSONParse", "Parsed with success"));

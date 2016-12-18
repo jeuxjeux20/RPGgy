@@ -274,6 +274,7 @@ namespace RPGgy.Game.Player
         }
 
         public uint MaxLife { get; set; } = 500;
+        public bool isDied => LifePoints <= 0;
     }
 
     public enum StatPoint

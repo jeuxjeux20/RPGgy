@@ -45,5 +45,7 @@ namespace RPGgy.Game.Core
         Tuple<int,bool> AttackEntity(FightContext f, IGameEntity entity);
         [JsonProperty("maxlife")]
         uint MaxLife { get; set; }
+
+        bool isDied { get; }
     }
 }
