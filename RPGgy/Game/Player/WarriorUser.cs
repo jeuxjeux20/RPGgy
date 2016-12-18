@@ -12,6 +12,8 @@ using Discord;
 using Discord.Net;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using RPGgy.Game.Core;
+using RPGgy.Game.Fights;
 using RPGgy.Game.Items;
 using RPGgy.Game.Items.Core;
 
@@ -21,7 +23,7 @@ namespace RPGgy.Game.Player
     [JsonObject(MemberSerialization.OptIn, Title = "WarriorUser")]
     public class WarriorUser : IWarriorUser,INotifyPropertyChanged
     {
-        private static SemaphoreSlim levelUpHandleLimitSemaphoreSlim = new SemaphoreSlim(0,3);
+        private static SemaphoreSlim _levelUpHandleLimitSemaphoreSlim = new SemaphoreSlim(0,3);
         [Serializable]
         public class NoStatpointsException : Exception
         {
@@ -97,6 +99,8 @@ namespace RPGgy.Game.Player
         }
         private static readonly JsonSerializer Json = new JsonSerializer();
         private BigInteger _experience;
+        private int _lifePoints;
+        private ushort _critical = 10;
 
         public void UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
         {
@@ -117,20 +121,19 @@ namespace RPGgy.Game.Player
                throw new ArgumentException("Wait m8, i don't see eitherr attack or defense -,-");
             }
         }
-        public WarriorUser(IUser user, int attack = 50, int lifePoints = 50,AttackItem attItem = null,DefenseItem defItem = null)
+        public WarriorUser(IUser user, int attack = 25, int lifePoints = 250,AttackItem attItem = null,DefenseItem defItem = null)
         {
             LevelUpEvent += WarriorUser_LevelUpEvent;
             Attack = attack;
             LifePoints = lifePoints;
             AttachedUser = user;
         }
-
-        private async void WarriorUser_LevelUpEvent(object sender, LevelUpEventArgs e)
+        
+        private void WarriorUser_LevelUpEvent(object sender, LevelUpEventArgs e)
         {
-            await levelUpHandleLimitSemaphoreSlim.WaitAsync();
             Level += 1;
             StatPoints += 1;
-            Retry:
+            /* Retry:
             try
             {
                 await (await e.Warrior.AttachedUser.CreateDMChannelAsync()).SendMessageAsync(
@@ -140,8 +143,7 @@ namespace RPGgy.Game.Player
             {
                 await Task.Delay(2500);
                 goto Retry;
-            }
-            levelUpHandleLimitSemaphoreSlim.Release();
+            }*/ // Apparently this causes problems
         }
         public uint StatPoints { get; set; }
         [JsonConstructor]
@@ -156,6 +158,12 @@ namespace RPGgy.Game.Player
             DefItem = defitem ?? DefenseItem.DefaultDefenseItem;
             if (attitem == null || defitem == null)
                 Program.Log(new LogMessage(LogSeverity.Debug, "GameCtor", "god damn"));
+            Died += WarriorUser_Died;
+        }
+
+        private void WarriorUser_Died(object sender, EventArgs e)
+        {
+            this.AttachedFightContext?.SomeoneDied(this);
         }
 
         public int AttackTotal => Attack + AttItem.Value;
@@ -171,7 +179,23 @@ namespace RPGgy.Game.Player
         public IUser AttachedUser { get; private set; }
 
         public int Attack { get; set; }
-        public int LifePoints { get; set; }
+
+        public int LifePoints
+        {
+            get { return _lifePoints; }
+            set
+            {
+                _lifePoints = value;
+                if (_lifePoints <= 0)
+                {
+                    Died?.Invoke(this, null);
+                    _lifePoints = 0;
+                }
+                if (_lifePoints > MaxLife)
+                    _lifePoints = (int)MaxLife;
+                GameContext.Serialize();
+            }
+        }
 
         public AttackItem AttItem { get; set; } = AttackItem.DeaultAttackItem;
         public DefenseItem DefItem { get; set; } = DefenseItem.DefaultDefenseItem;
@@ -218,6 +242,38 @@ namespace RPGgy.Game.Player
         }
 
         public string AttachedUserName => AttachedUser.Username +"#"+AttachedUser.Discriminator;
+        public FightContext AttachedFightContext { get; set; } = null;
+        public event EventHandler Died;
+
+        public ushort Critical
+        {
+            get { return _critical; }
+            set
+            {
+                if (value > 100)
+                {
+                    _critical = 100;
+                    return;
+                }
+                _critical = value;
+            }
+        }
+        private static readonly Random Randomiser = new Random();
+        public Tuple<int,bool> AttackEntity(FightContext f, IGameEntity entity)
+        {
+            if (f == null) return new Tuple<int, bool>(0,false);
+            bool isCrit;
+            // ReSharper disable once AssignmentInConditionalExpression
+            // ReSharper disable once Stupidity
+            var moarAttack = (isCrit = Randomiser.Next(0, 100) < Critical)
+                ? this.AttackTotal + (this.AttackTotal / 4)
+                : this.AttackTotal;
+            int kek;
+            entity.LifePoints -= kek = Math.Max(moarAttack * ((Randomiser.Next(1, 10) / 100) + 1) - entity.DefenseTotal,Randomiser.Next(1,3));
+            return new Tuple<int, bool>(kek,isCrit);
+        }
+
+        public uint MaxLife { get; set; } = 500;
     }
 
     public enum StatPoint

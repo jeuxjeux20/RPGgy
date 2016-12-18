@@ -168,13 +168,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Misc\Tools\ASCIIBar.cs" />
     <Compile Include="CommandHandler.cs" />
+    <Compile Include="Game\Fights\FightContext.cs" />
     <Compile Include="Game\GameContext.cs" />
     <Compile Include="Game\Items\AttackItem.cs" />
     <Compile Include="Game\Items\Core\IItem.cs" />
     <Compile Include="Game\Items\DefenseItem.cs" />
     <Compile Include="Game\Core\IGameEntity.cs" />
     <Compile Include="Game\Player\IWarriorUser.cs" />
+    <Compile Include="Permissions\Attributes\MustBeInFightAttribute.cs" />
+    <Compile Include="Permissions\Attributes\MustBeRegisteredAttribute.cs" />
     <Compile Include="Permissions\Checkers\Cooldown.cs" />
     <Compile Include="Permissions\Attributes\CooldownedAttribute.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

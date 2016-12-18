@@ -19,5 +19,6 @@ namespace RPGgy.Game.Player
         uint StatPoints { get; set; }
         [JsonProperty("nameOfUser")]
         string AttachedUserName { get; }
+        
     }
 }

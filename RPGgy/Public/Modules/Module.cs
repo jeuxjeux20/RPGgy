@@ -10,6 +10,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using RPGgy.Game;
+using RPGgy.Game.Fights;
 using RPGgy.Game.Player;
 using RPGgy.Permissions.Attributes;
 
@@ -46,6 +47,57 @@ namespace RPGgy.Public.Modules
             await GameContext.Deserialize();
             await msg.ModifyAsync(param => param.Content = ":white_check_mark: JSON reloaded !");
         }
+        
+
+        [Command("fightstart")]
+        [Summary("Let's start a fight against someone")]
+        [MustBeRegistered]
+        
+        public async Task Fightstart([MustBeRegisteredParameter] IUser toFight)
+        {
+            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
+            if (user == null)
+            {
+                await ReplyAsync("You aren't registered ! register using RPG.createuser :smiley:");
+                return;
+            }
+            var usertoFight = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(toFight));
+            if (usertoFight == null)
+            {
+                await ReplyAsync("This guy isn't registered");
+                return;
+            }
+            await ReplyAsync("owo");
+            new FightContext(user, usertoFight).Done += async (sender, e) =>
+            {
+                await ReplyAsync($"Woo ! {e.WhoDidUser.AttachedUser.Username} died !");
+            };
+        }
+
+        [Command("Attack")]
+        [Summary("Attacks if you're in  a fight")]
+        [MustBeRegistered]
+        [MustBeInFight]
+        [FightMustBeHisTurn]
+        public async Task Attack()
+        {
+            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
+            
+            if (user?.AttachedFightContext == null)
+            {
+                await ReplyAsync("You aren't in a fight");
+                return;
+            }
+            // await ReplyAsync($" Ouch ! {user.AttachedFightContext.TurnOfUser.Username} dealt {user.AttachedFightContext.Attack()} damage !");
+            var results = user.AttachedFightContext.Attack();
+                await ReplyAsync(
+                    $@"{(results.Item2 ? "CRITICAL ! " : "")}{user.AttachedFightContext.TurnOfUser.Username} dealt {results.Item1} damage !
+{user.AttachedFightContext.TurnOfEnemyUser.Username} : {user.AttachedFightContext.TurnOfEnemy.LifePoints} HP
+{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar((uint)user.AttachedFightContext.TurnOfEnemy.LifePoints,user.AttachedFightContext.TurnOfEnemy.MaxLife)}
+{user.AttachedFightContext.TurnOfUser.Username} : {user.AttachedFightContext.TurnOfEntity.LifePoints} HP
+{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar((uint)user.AttachedFightContext.TurnOfEntity.LifePoints,user.AttachedFightContext.TurnOfEntity.MaxLife)}");
+        }
+
         [Command("forcejson")]
         [Summary("Forces the json to serialize")]
         [RequireOwner]
@@ -57,27 +109,23 @@ namespace RPGgy.Public.Modules
         }
         [Command("xp")]
         [Summary("wunt xp")]
-        public async Task Exp()
+        [MustBeRegistered]
+        public Task Exp()
         {
-            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            if (user == null)
-            {
-                await ReplyAsync("You aren't registered ! register using RPG.createuser :smiley:");
-                return;
-            }
-            user.Experience += 750;
+            var firstOrDefault = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
+            if (firstOrDefault != null)
+                firstOrDefault.Experience += 200;
+
+            return Task.CompletedTask;
         }
 
         [Command("usepoint")]
         [Summary("Use a stat point ;)")]
-        public async Task usepoint(string type,ushort howMuch = 1)
+        [MustBeRegistered]
+        public async Task Usepoint(string type,ushort howMuch = 1)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            if (user == null)
-            {
-                await ReplyAsync("You aren't registered ! register using RPG.createuser :smiley:");
-                return;
-            }
+            
             StatPoint stat;
             if (type.ToLower().Contains("attack"))
             {
@@ -118,14 +166,11 @@ namespace RPGgy.Public.Modules
         }
         [Command("stats")]
         [Summary("Get the stats of your fighter !")]
+        [MustBeRegistered]
         public async Task Stats()
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            if (user == null)
-            {
-                await ReplyAsync("You aren't registered ! register using RPG.createuser :smiley:");
-                return;
-            }
+            
             await ReplyAsync("", embed: new EmbedBuilder()
                                  .WithThumbnailUrl(Context.User.AvatarUrl)
                                  .AddField(builder =>
@@ -325,7 +370,7 @@ namespace RPGgy.Public.Modules
                                       ? "No description available, the dev is too lazy to add one :smiley:"
                                       : cmd.Summary));
                     if (cmd.Parameters.Count > 0)
-                        sb.AppendLine($"\t\tParameters: {string.Join(" ", cmd.Parameters.Select(p => formatParam(p)))}");
+                        sb.AppendLine($"\t\tParameters: {string.Join(" ", cmd.Parameters.Select(p => FormatParam(p)))}");
                 }
             }
             else
@@ -337,7 +382,7 @@ namespace RPGgy.Public.Modules
         }
 
         // This code is fropm Joe4evr
-        private string formatParam(ParameterInfo param)
+        private string FormatParam(ParameterInfo param)
         {
             var sb = new StringBuilder();
             if (param.IsMultiple)

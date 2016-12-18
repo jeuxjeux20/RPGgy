@@ -12,7 +12,7 @@ namespace RPGgy.Game
 {
     public static class GameContext
     {
-        public static SemaphoreSlim isBusy = new SemaphoreSlim(1);
+        public static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
         public static bool Serializing = true;
         static GameContext()
         {
@@ -50,8 +50,8 @@ namespace RPGgy.Game
             Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));
             Task.Run(() =>
             {
-                isBusy.Wait(); Serialize();
-                isBusy.Release();
+                IsBusy.Wait(); Serialize();
+                IsBusy.Release();
             });
         }
 
@@ -73,8 +73,8 @@ namespace RPGgy.Game
         {
             await Task.Run(() =>
             {
-                isBusy.Wait(); DeserializeCore();
-                isBusy.Release();
+                IsBusy.Wait(); DeserializeCore();
+                IsBusy.Release();
             });
         }
         internal static void DeserializeCore()
