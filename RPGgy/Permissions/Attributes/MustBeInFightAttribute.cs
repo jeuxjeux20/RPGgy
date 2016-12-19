@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -10,9 +7,10 @@ using RPGgy.Game.Fights;
 
 namespace RPGgy.Permissions.Attributes
 {
-    class MustBeInFightAttribute : PreconditionAttribute
+    internal class MustBeInFightAttribute : PreconditionAttribute
     {
-        public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command, IDependencyMap map)
+        public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command,
+            IDependencyMap map)
         {
             var isThere = FightContext.ActualContexts.Keys.Any(
                 test => test.Item1.Id == context.User.Id || test.Item2.Id == context.User.Id);
@@ -22,7 +20,7 @@ namespace RPGgy.Permissions.Attributes
         }
     }
 
-    class FightMustBeHisTurn : PreconditionAttribute
+    internal class FightMustBeHisTurn : PreconditionAttribute
     {
         public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command,
             IDependencyMap map)
@@ -34,24 +32,31 @@ namespace RPGgy.Permissions.Attributes
         }
     }
 
-    class MusntBeInFight : PreconditionAttribute
+    internal class MusntBeInFight : PreconditionAttribute
     {
-        public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command, IDependencyMap map)
+        public override Task<PreconditionResult> CheckPermissions(CommandContext context, CommandInfo command,
+            IDependencyMap map)
         {
             var isThere = FightContext.ActualContexts.Keys.Any(
-                 test => test.Item1.Id == context.User.Id || test.Item2.Id == context.User.Id);
-            return Task.FromResult(isThere ? PreconditionResult.FromError("You're in a fight, idiot") : PreconditionResult.FromSuccess());
+                test => test.Item1.Id == context.User.Id || test.Item2.Id == context.User.Id);
+            return
+                Task.FromResult(isThere
+                                    ? PreconditionResult.FromError("You're in a fight, idiot")
+                                    : PreconditionResult.FromSuccess());
         }
     }
 
-    class MusntBeInFightParameter : ParameterPreconditionAttribute
+    internal class MusntBeInFightParameter : ParameterPreconditionAttribute
     {
-        public override Task<PreconditionResult> CheckPermissions(CommandContext context, ParameterInfo parameter, object value, IDependencyMap map)
+        public override Task<PreconditionResult> CheckPermissions(CommandContext context, ParameterInfo parameter,
+            object value, IDependencyMap map)
         {
             var isThere = FightContext.ActualContexts.Keys.Any(
-                 test => test.Item1.Id == ((IUser)value).Id || test.Item2.Id == ((IUser)value).Id);
-            return Task.FromResult(isThere ? PreconditionResult.FromError("You're in a fight, idiot") : PreconditionResult.FromSuccess());
+                test => test.Item1.Id == ((IUser) value).Id || test.Item2.Id == ((IUser) value).Id);
+            return
+                Task.FromResult(isThere
+                                    ? PreconditionResult.FromError("The provided user is in a fight idiot !")
+                                    : PreconditionResult.FromSuccess());
         }
     }
-
 }

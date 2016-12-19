@@ -27,7 +27,7 @@ namespace RPGgy
         {
             // Define the DiscordSocketClient
             Client = new DiscordSocketClient();
-            
+
             var token = Settings.Default.Token;
 
             // Login and connect to Discord.
@@ -43,7 +43,7 @@ namespace RPGgy
                 token = Console.ReadLine();
                 goto Again;
             }
-            
+
             await Client.ConnectAsync();
             Settings.Default.Token = token;
             Settings.Default.Save();

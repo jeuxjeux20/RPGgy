@@ -13,12 +13,15 @@ namespace RPGgy.Game.Player
         [JsonProperty("id")]
         ulong AttachedUserId { get; set; }
 
-        bool IsOk(IUser testUser);
-        event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;
         [JsonProperty("statPoints")]
         uint StatPoints { get; set; }
+
         [JsonProperty("nameOfUser")]
         string AttachedUserName { get; }
-        
+
+        bool IsOk(IUser testUser);
+        event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;
+        [JsonProperty("gold")]
+        uint Gold { get; set; }
     }
 }

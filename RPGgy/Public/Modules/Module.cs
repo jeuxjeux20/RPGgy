@@ -13,17 +13,18 @@ using Discord.WebSocket;
 using RPGgy.Game;
 using RPGgy.Game.Fights;
 using RPGgy.Game.Player;
+using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
 
 // ReSharper disable UnusedMember.Global
 // Because m8, you didn't know that discord.net uses some magic that we call reflection ! No, it's not about mirrors.
+
 namespace RPGgy.Public.Modules
 {
     public class PublicModule : ModuleBase
     {
         [Command("createuser")]
         [Summary("Creates a new user in the warrior list")]
-        
         public async Task CreateWarrior()
         {
             if (GameContext.WarriorsList.All(u => u.AttachedUser != Context.User))
@@ -39,6 +40,7 @@ namespace RPGgy.Public.Modules
                 await lol.ModifyAsync(mod => mod.Content = "You are alerady in the list, sorry !");
             }
         }
+
         [Command("reloadjson")]
         [Summary("Reloads the json")]
         [RequireOwner]
@@ -48,11 +50,12 @@ namespace RPGgy.Public.Modules
             await GameContext.Deserialize();
             await msg.ModifyAsync(param => param.Content = ":white_check_mark: JSON reloaded !");
         }
-        
+
 
         [Command("fightstart")]
         [Summary("Let's start a fight against someone")]
         [MustBeRegistered]
+        [MusntBeDead]
         [MusntBeInFight]
         public async Task Fightstart([MustBeRegisteredParameter] [MusntBeInFightParameter] IUser toFight)
         {
@@ -76,7 +79,14 @@ namespace RPGgy.Public.Modules
 90 XP");
                 e.WinUser.Experience += 90;
             };
+        }
 
+        [Command("heal")]
+        [Summary("heals yourself")]
+        [MustBeRegistered]
+        [MusntBeInFight]
+        public async Task heal()
+        {
         }
 
         [Command("Attack")]
@@ -87,21 +97,25 @@ namespace RPGgy.Public.Modules
         public async Task Attack()
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            
+
             if (user?.AttachedFightContext == null)
             {
                 await ReplyAsync("You aren't in a fight");
                 return;
             }
             // await ReplyAsync($" Ouch ! {user.AttachedFightContext.TurnOfUser.Username} dealt {user.AttachedFightContext.Attack()} damage !");
-            var results = user.AttachedFightContext.Attack();
+            user.AttachedFightContext.Attack(async r =>
+            {
                 await ReplyAsync(
-                    $@"{(results.Item2 ? "CRITICAL ! " : "")}{user.AttachedFightContext.TurnOfUser.Username} dealt {results.Item1} damage !
+                    $@"{(r.isCritical ? "CRITICAL ! " : "")}{user.AttachedFightContext.TurnOfUser.Username} dealt {r
+                        .AttackValue} damage !
 {user.AttachedFightContext.TurnOfEnemyUser.Username} : {user.AttachedFightContext.TurnOfEnemy.LifePoints} HP
-{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEnemy.LifePoints,(int)user.AttachedFightContext.TurnOfEnemy.MaxLife)}
+{AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEnemy.LifePoints,
+                          (int) user.AttachedFightContext.TurnOfEnemy.MaxLife)}
 {user.AttachedFightContext.TurnOfUser.Username} : {user.AttachedFightContext.TurnOfEntity.LifePoints} HP
-{RPGgy.Misc.Tools.AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEntity.LifePoints,(int)user.AttachedFightContext.TurnOfEntity.MaxLife)}");
-            user.AttachedFightContext.FinishedAction();
+{AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEntity.LifePoints,
+                          (int) user.AttachedFightContext.TurnOfEntity.MaxLife)}");
+            });
         }
 
         [Command("forcejson")]
@@ -113,6 +127,7 @@ namespace RPGgy.Public.Modules
             GameContext.Serialize();
             await msg.ModifyAsync(param => param.Content = ":white_check_mark: JSON serialized !");
         }
+
         [Command("xp")]
         [Summary("wunt xp")]
         [MustBeRegistered]
@@ -128,10 +143,10 @@ namespace RPGgy.Public.Modules
         [Command("usepoint")]
         [Summary("Use a stat point ;)")]
         [MustBeRegistered]
-        public async Task Usepoint(string type,ushort howMuch = 1)
+        public async Task Usepoint(string type, ushort howMuch = 1)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            
+
             StatPoint stat;
             if (type.ToLower().Contains("attack"))
             {
@@ -170,6 +185,7 @@ namespace RPGgy.Public.Modules
         {
             throw new Exception("WAAAAAAA THROWN POPOPOOOOOOOOO");
         }
+
         [Command("stats")]
         [Summary("Get the stats of your fighter !")]
         [MustBeRegistered]
@@ -177,7 +193,7 @@ namespace RPGgy.Public.Modules
         public async Task Stats()
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            
+
             await ReplyAsync("", embed: new EmbedBuilder()
                                  .WithThumbnailUrl(Context.User.AvatarUrl)
                                  .AddField(builder =>
@@ -240,11 +256,11 @@ namespace RPGgy.Public.Modules
                                      builder.Value = user.StatPoints.ToString();
                                      builder.IsInline = true;
                                  })
-                                 .AddField(builder => 
-                                 builder.WithName("HP")
-                                        .WithValue($"{user.LifePoints}/{user.MaxLife}")
-                                        .WithIsInline(true)
-                                 )                                
+                                 .AddField(builder =>
+                                               builder.WithName("HP")
+                                                   .WithValue($"{user.LifePoints}/{user.MaxLife}")
+                                                   .WithIsInline(true)
+                                 )
                                  .WithTitle($"Stats for {user.AttachedUser.Username}"));
         }
 
@@ -276,7 +292,6 @@ namespace RPGgy.Public.Modules
                                  })
                                  .WithColor(Color.Default)
                                  .WithTitle("how are you m8"));
-            
         }
 
         [Command("report")]

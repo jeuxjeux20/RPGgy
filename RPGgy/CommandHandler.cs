@@ -50,7 +50,8 @@ namespace RPGgy
 
             if (!result.IsSuccess)
                 if (result.Error != CommandError.UnknownCommand)
-                    await message.Channel.SendMessageAsync($"**Error:** {result.ErrorReason ?? "nothing specified idk why O_o that's very weird you know, i'm gonna call the police someone murdered the error string, who the hell would do that, i'm impressed by this woa"} :'(");
+                    await message.Channel.SendMessageAsync(
+                        $"**Error:** {result.ErrorReason ?? "nothing specified idk why O_o that's very weird you know, i'm gonna call the police someone murdered the error string, who the hell would do that, i'm impressed by this woa"} :'(");
         }
     }
 }

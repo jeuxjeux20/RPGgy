@@ -177,6 +177,8 @@
     <Compile Include="Game\Items\DefenseItem.cs" />
     <Compile Include="Game\Core\IGameEntity.cs" />
     <Compile Include="Game\Player\IWarriorUser.cs" />
+    <Compile Include="Misc\Tools\Extensions.cs" />
+    <Compile Include="Permissions\Attributes\MusntBeDead.cs" />
     <Compile Include="Permissions\Attributes\MustBeInFightAttribute.cs" />
     <Compile Include="Permissions\Attributes\MustBeRegisteredAttribute.cs" />
     <Compile Include="Permissions\Checkers\Cooldown.cs" />

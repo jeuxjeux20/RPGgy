@@ -14,6 +14,7 @@ namespace RPGgy.Game
     {
         public static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
         public static bool Serializing = true;
+
         static GameContext()
         {
             try
@@ -50,7 +51,8 @@ namespace RPGgy.Game
             Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));
             Task.Run(() =>
             {
-                IsBusy.Wait(); Serialize();
+                IsBusy.Wait();
+                Serialize();
                 IsBusy.Release();
             });
         }
@@ -58,14 +60,14 @@ namespace RPGgy.Game
         public static void Serialize()
         {
             if (Serializing) return;
-            using (StreamWriter sw = new StreamWriter("warriors.json", false))
+            using (var sw = new StreamWriter("warriors.json", false))
             {
                 JsonSerializer.Create(new JsonSerializerSettings
-                {
-                    MissingMemberHandling = MissingMemberHandling.Ignore,
-                    NullValueHandling = NullValueHandling.Ignore,
-                    Formatting = Formatting.Indented
-                }).Serialize(sw, WarriorsList);
+                                      {
+                                          MissingMemberHandling = MissingMemberHandling.Ignore,
+                                          NullValueHandling = NullValueHandling.Ignore,
+                                          Formatting = Formatting.Indented
+                                      }).Serialize(sw, WarriorsList);
             }
         }
 
@@ -73,7 +75,8 @@ namespace RPGgy.Game
         {
             await Task.Run(() =>
             {
-                IsBusy.Wait(); DeserializeCore();
+                IsBusy.Wait();
+                DeserializeCore();
                 IsBusy.Release();
             });
         }
@@ -86,7 +89,7 @@ namespace RPGgy.Game
                 if (sr.ReadToEnd().Length < 2) throw new FileNotFoundException();
                 sr.BaseStream.Position = 0;
                 var myLovelyReader = new JsonTextReader(sr);
-                
+
                 WarriorsList =
                     JsonSerializer.Create().Deserialize<ObservableCollection<WarriorUser>>(myLovelyReader);
                 Program.Log(new LogMessage(LogSeverity.Info, "JSONParse", "Parsed with success"));
