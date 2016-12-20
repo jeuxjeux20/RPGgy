@@ -55,5 +55,8 @@ namespace RPGgy.Game.Core
         bool IsDead { get; }
         event EventHandler Died;
         Tuple<int, bool> AttackEntity(FightContext f, IGameEntity entity);
+
+        [JsonProperty("name")]
+        string Name { get; }
     }
 }

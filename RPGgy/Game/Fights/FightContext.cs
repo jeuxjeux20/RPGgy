@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Discord;
 using RPGgy.Game.Player;
-
 namespace RPGgy.Game.Fights
 {
     public sealed class FightContext
@@ -19,9 +20,11 @@ namespace RPGgy.Game.Fights
                                this);
         }
 
+        public event EventHandler<TurnChangedEventArgs> OnTurnChanged;
+
         private IWarriorUser Attacker { get; }
         private IWarriorUser Opponent { get; }
-
+        private bool _isSomeoneDead = false;
         public static Dictionary<Tuple<IUser, IUser>, FightContext> ActualContexts { get; } =
             new Dictionary<Tuple<IUser, IUser>, FightContext>();
 
@@ -30,24 +33,35 @@ namespace RPGgy.Game.Fights
         public IUser TurnOfUser => TurnOfEntity.AttachedUser;
         public IWarriorUser TurnOfEnemy => TurnOfEntity == Attacker ? Opponent : Attacker;
         public IUser TurnOfEnemyUser => TurnOfEnemy.AttachedUser;
+/*
         private static Random Randomiser { get; } = new Random();
-
+*/
+        private bool _isAttacking = false;
         public void Attack(Action<AttackContext> act)
         {
+            if (_isSomeoneDead) return;
+            _isAttacking = true;
             Tuple<int, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy);
             act(new AttackContext(myAwesomeResult.Item1, myAwesomeResult.Item2));
             TurnChange();
+            _isAttacking = false;
+            
         }
 
         private void TurnChange() // how does it works !
-        {
-            TurnOfEntity = TurnOfEnemy; // 1 idk swap
+        {            
+            TurnOfEntity = TurnOfEnemy;
+            if (_isSomeoneDead) return;
+            OnOnTurnChanged(new TurnChangedEventArgs(TurnOfEntity));
         } // now, void is awaiting you, but you can't await void (in some cases). paradox = true = paradox;
 
-        public void SomeoneDied(IWarriorUser who)
+        public async Task SomeoneDied(IWarriorUser who)
         {
+            _isSomeoneDead = true;
             OnDone(new FightContextTerminatedEventArgs(who, TurnOfEntity));
             ActualContexts.Remove(_actualTuple);
+            while (_isAttacking)
+                await Task.Delay(100);
             Attacker.AttachedFightContext = null;
             Opponent.AttachedFightContext = null;
         }
@@ -64,16 +78,30 @@ namespace RPGgy.Game.Fights
             public AttackContext(int value, bool critical)
             {
                 AttackValue = value;
-                isCritical = critical;
+                IsCritical = critical;
             }
 
             public int AttackValue { get; private set; }
-            public bool isCritical { get; private set; }
+            public bool IsCritical { get; private set; }
+        }
+
+
+        private void OnOnTurnChanged(TurnChangedEventArgs e)
+        {
+            OnTurnChanged?.Invoke(this, e);
         }
     }
 }
 
-public class FightContextTerminatedEventArgs
+public class TurnChangedEventArgs : EventArgs
+{
+    public TurnChangedEventArgs(IWarriorUser current)
+    {
+        CurrentTurnUser = current;
+    }
+    public IWarriorUser CurrentTurnUser { get; private set; }
+}
+public class FightContextTerminatedEventArgs : EventArgs
 {
     public FightContextTerminatedEventArgs(IWarriorUser whoUser, IWarriorUser woonerUser)
     {

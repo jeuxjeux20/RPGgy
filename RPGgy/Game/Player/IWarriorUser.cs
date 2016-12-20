@@ -16,8 +16,8 @@ namespace RPGgy.Game.Player
         [JsonProperty("statPoints")]
         uint StatPoints { get; set; }
 
-        [JsonProperty("nameOfUser")]
-        string AttachedUserName { get; }
+        //[JsonProperty("nameOfUser")]
+        //string AttachedUserName { get; }
 
         bool IsOk(IUser testUser);
         event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;

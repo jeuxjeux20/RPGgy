@@ -20,8 +20,6 @@ namespace RPGgy.Game.Player
     [JsonObject(MemberSerialization.OptIn, Title = "WarriorUser")]
     public class WarriorUser : IWarriorUser, INotifyPropertyChanged
     {
-        private static SemaphoreSlim _levelUpHandleLimitSemaphoreSlim = new SemaphoreSlim(0, 3);
-
         public static readonly Dictionary<StatPoint, string> StatDictionary = new Dictionary<StatPoint, string>
                                                                               {
                                                                                   {StatPoint.Attack, "Attack"},
@@ -33,6 +31,7 @@ namespace RPGgy.Game.Player
         private ushort _critical = 10;
         private BigInteger _experience;
         private int _lifePoints;
+        private uint _gold = 100;
 
         public WarriorUser(IUser user, int attack = 25, int lifePoints = 250, AttackItem attItem = null,
             DefenseItem defItem = null)
@@ -129,7 +128,7 @@ namespace RPGgy.Game.Player
         public BigInteger ExperienceObjective => (ulong) (Level * (20 + Math.Pow(Level, Level * 0.015 + 1)));
         public event EventHandler<LevelUpEventArgs> LevelUpEvent;
 
-        public string AttachedUserName => AttachedUser.Username + "#" + AttachedUser.Discriminator;
+        public string Name => AttachedUser.Username + "#" + AttachedUser.Discriminator;
         public FightContext AttachedFightContext { get; set; } = null;
         public event EventHandler Died;
 
@@ -220,12 +219,17 @@ namespace RPGgy.Game.Player
             // Program.Log(new LogMessage(LogSeverity.Info, "Warrior", "WOAH! i got called ;)"));
             GameContext.Serialize();          
         }
+
         /// <summary>
-        /// The Gold $_$
+        /// The gold $_$
         /// </summary>
-        /// 
-        public uint Gold { get; set; }
-        
+        public uint Gold
+        {
+            get { return _gold; }
+            set { _gold = value; OnPropertyChanged();}
+        }
+
+
         [Serializable]
         public class NoStatpointsException : Exception
         {

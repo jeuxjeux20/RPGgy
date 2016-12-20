@@ -34,6 +34,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Discord.Addons.InteractiveCommands, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Addons.InteractiveCommands.1.1.0-ci-00017\lib\netstandard1.3\Discord.Addons.InteractiveCommands.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Discord.Net.Commands, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Discord.Net.Commands.1.0.0-beta2-00501\lib\netstandard1.3\Discord.Net.Commands.dll</HintPath>
       <Private>True</Private>
@@ -181,6 +185,7 @@
     <Compile Include="Permissions\Attributes\MusntBeDead.cs" />
     <Compile Include="Permissions\Attributes\MustBeInFightAttribute.cs" />
     <Compile Include="Permissions\Attributes\MustBeRegisteredAttribute.cs" />
+    <Compile Include="Permissions\Attributes\MustHaveEnoughGold.cs" />
     <Compile Include="Permissions\Checkers\Cooldown.cs" />
     <Compile Include="Permissions\Attributes\CooldownedAttribute.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -211,6 +216,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Public\Modules\Tools\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

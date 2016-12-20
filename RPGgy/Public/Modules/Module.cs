@@ -5,16 +5,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using RPGgy.Game;
+using RPGgy.Game.Core;
 using RPGgy.Game.Fights;
 using RPGgy.Game.Player;
 using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
+using Discord.Addons.InteractiveCommands;
 
 // ReSharper disable UnusedMember.Global
 // Because m8, you didn't know that discord.net uses some magic that we call reflection ! No, it's not about mirrors.
@@ -23,6 +26,11 @@ namespace RPGgy.Public.Modules
 {
     public class PublicModule : ModuleBase
     {
+        private InteractiveService Interactive { get; }
+        public PublicModule(InteractiveService inter)
+        {
+            Interactive = inter;
+        }
         [Command("createuser")]
         [Summary("Creates a new user in the warrior list")]
         public async Task CreateWarrior()
@@ -72,12 +80,22 @@ namespace RPGgy.Public.Modules
                 return;
             }
             await ReplyAsync("owo");
-            new FightContext(user, usertoFight).Done += async (sender, e) =>
+            var fight = new FightContext(user, usertoFight);
+            fight.Done += async (sender, e) =>
+        {
+            float randomMult = (new Random(DateTime.Now.Millisecond).Next(1, 20) / 100) + 1;
+            float levelMult = (e.WhoDiedUser.Level / (float)e.WinUser.Level) * randomMult;
+            int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
+            int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * levelMult * randomMult);
+            await ReplyAsync($"Woo ! {e.WhoDiedUser.AttachedUser.Username} died !");
+            await ReplyAsync($@"Rewards for {e.WinUser.AttachedUser.Username} :
+Before applying the multiplier : {beforeMult} XP
+After applying the {randomMult:0.00%} multiplier : {finalResult} XP !");
+            e.WinUser.Experience += finalResult;
+        };
+            fight.OnTurnChanged += async (sender, e) =>
             {
-                await ReplyAsync($"Woo ! {e.WhoDiedUser.AttachedUser.Username} died !");
-                await ReplyAsync($@"Rewards for {e.WinUser.AttachedUser.Username} :
-90 XP");
-                e.WinUser.Experience += 90;
+                await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !");
             };
         }
 
@@ -85,8 +103,29 @@ namespace RPGgy.Public.Modules
         [Summary("heals yourself")]
         [MustBeRegistered]
         [MusntBeInFight]
-        public async Task heal()
+        [MustHaveEnoughGold(20)]
+        public async Task Heal()
         {
+            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
+            await ReplyAsync($@"Are you sure you wanna buy a full heal for 20 gold ? You have {user.Gold} gold.
+Type `RPG.yes` or `RPG.no`");
+            var result = await Interactive.WaitForMessage(Context.User,
+                                                    Context.Channel,
+                                                    TimeSpan.FromSeconds(15),
+                                                    new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
+                                                                                            "RPG.confirm"));
+            if (result.Content == "RPG.yes" || result.Content == "RPG.confirm")
+            {
+                var m = await ReplyAsync("Buying... :moneybag: <- :money_with_wings: 20 gold");
+                await Task.Delay(125);
+                user.Gold -= 20;
+                user.LifePoints = (int) user.MaxLife;
+                await m.ModifyAsync(modifier => modifier.Content=":heavy_check_mark: The transaction has been succesfully executed !");
+            }
+            else
+            {
+                await ReplyAsync("You choosed to not buy this.");
+            }
         }
 
         [Command("Attack")]
@@ -101,21 +140,25 @@ namespace RPGgy.Public.Modules
             if (user?.AttachedFightContext == null)
             {
                 await ReplyAsync("You aren't in a fight");
+                
                 return;
             }
+            
             // await ReplyAsync($" Ouch ! {user.AttachedFightContext.TurnOfUser.Username} dealt {user.AttachedFightContext.Attack()} damage !");
             user.AttachedFightContext.Attack(async r =>
             {
+                IGameEntity[] actual = { user.AttachedFightContext.TurnOfEntity, user.AttachedFightContext.TurnOfEnemy }; // actual[0] is current, actual[1] is ennemy
                 await ReplyAsync(
-                    $@"{(r.isCritical ? "CRITICAL ! " : "")}{user.AttachedFightContext.TurnOfUser.Username} dealt {r
+                    $@"{(r.IsCritical ? "CRITICAL ! " : "")}{actual[0].Name} dealt {r
                         .AttackValue} damage !
-{user.AttachedFightContext.TurnOfEnemyUser.Username} : {user.AttachedFightContext.TurnOfEnemy.LifePoints} HP
-{AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEnemy.LifePoints,
-                          (int) user.AttachedFightContext.TurnOfEnemy.MaxLife)}
-{user.AttachedFightContext.TurnOfUser.Username} : {user.AttachedFightContext.TurnOfEntity.LifePoints} HP
-{AsciiBar.DrawProgressBar(user.AttachedFightContext.TurnOfEntity.LifePoints,
-                          (int) user.AttachedFightContext.TurnOfEntity.MaxLife)}");
+{actual[1].Name} : {actual[1].LifePoints} HP
+{AsciiBar.DrawProgressBar(actual[1].LifePoints,
+                          (int)actual[1].MaxLife)}
+{actual[0].Name} : {actual[0].LifePoints} HP
+{AsciiBar.DrawProgressBar(actual[0].LifePoints,
+                          (int)actual[0].MaxLife)}");
             });
+            
         }
 
         [Command("forcejson")]
@@ -189,7 +232,7 @@ namespace RPGgy.Public.Modules
         [Command("stats")]
         [Summary("Get the stats of your fighter !")]
         [MustBeRegistered]
-        [SuppressMessage("ReSharper", "PossibleNullReferenceException")] // because it's checked with MuseBeRegistered
+        [SuppressMessage("ReSharper", "PossibleNullReferenceException")] // because it's checked with MuseBeRegistered and STOP nagging me pls
         public async Task Stats()
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
@@ -261,9 +304,12 @@ namespace RPGgy.Public.Modules
                                                    .WithValue($"{user.LifePoints}/{user.MaxLife}")
                                                    .WithIsInline(true)
                                  )
+                                 .AddField(builder => builder
+                                                      .WithName("Gold")
+                                                      .WithValue(user.Gold.ToString())
+                                                      .WithIsInline(true))
                                  .WithTitle($"Stats for {user.AttachedUser.Username}"));
         }
-
         [Command("logout")]
         [Alias("disconnect")]
         [RequireOwner]
