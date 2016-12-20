@@ -14,6 +14,7 @@ using RPGgy.Game.Core;
 using RPGgy.Game.Fights;
 using RPGgy.Game.Items;
 using RPGgy.Game.Items.Core;
+using RPGgy.Misc.Tools;
 
 namespace RPGgy.Game.Player
 {
@@ -167,11 +168,12 @@ namespace RPGgy.Game.Player
                 ? AttackTotal + AttackTotal / 4
                 : AttackTotal;
             uint kek;
-            entity.LifePoints -=
-                kek =
-                    (uint) Math.Max(
-                        moarAttack * (Randomiser.Next(1, 25) / 100 + 1) + Randomiser.Next(1, 3) - entity.DefenseTotal,
-                        Randomiser.Next(1, entity.Level));
+            entity.LifePoints = entity.LifePoints.SafeSubstract(kek =
+                                                (uint) Math.Max(
+                                                    moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
+                                                    Randomiser.Next(1, 3) - entity.DefenseTotal,
+                                                    Randomiser.Next(1, entity.Level)));
+                
             return new Tuple<uint, bool>(kek, isCrit);
         }
 

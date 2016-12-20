@@ -34,5 +34,6 @@ namespace RPGgy.Properties {
                 this["Token"] = value;
             }
         }
+
     }
 }

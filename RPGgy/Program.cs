@@ -30,6 +30,9 @@ namespace RPGgy
             
             // Define the DiscordSocketClient
             Client = new DiscordSocketClient();
+
+                Settings.Default.Upgrade();
+                Settings.Default.Save();
            
             var token = Settings.Default.Token;
 

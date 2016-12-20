@@ -74,6 +74,7 @@ namespace RPGgy.Public.Modules
 
         [Command("fightstart")]
         [Summary("Let's start a fight against someone")]
+        [Alias("startfight", "fight")]
         [MustBeRegistered]
         [MusntBeDead]
         [MusntBeInFight]
@@ -92,20 +93,21 @@ namespace RPGgy.Public.Modules
                 await ReplyAsync("This guy isn't registered");
                 return;
             }
-            await ReplyAsync("owo");
+            await ReplyAsync($"Here it goes ! {Context.User.Mention} is attacking {toFight.Mention} !" +
+                             $":crossed_swords: It's now {Context.User.Mention}'s turn !");
             var fight = new FightContext(user, usertoFight);
             fight.Done += async (sender, e) =>
         {
             float randomMult = (new Random(DateTime.Now.Millisecond).Next(1, 20) / (float)100) + 1;
             float levelMult = (e.WhoDiedUser.Level / (float)e.WinUser.Level) * randomMult;
-            int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * levelMult); // the difference matters !
-            int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult);
+            int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
+            int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult); // aaa maybe
             await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($"Woo ! {e.WhoDiedUser.Name} died !"));
             await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Rewards for {e.WinUser.Name} :
 Before applying the multiplier : {beforeMult} XP
-After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));          
+After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));
             e.WinUser.Experience += finalResult;
-            
+
         };
             fight.OnTurnChanged += async (sender, e) =>
             {
@@ -133,20 +135,20 @@ After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             await ReplyAsync($@"Are you sure you wanna buy a full heal for 20 gold ? You have {user.Gold} gold.
-Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so");
+Type `RPG.yes` or `RPG.no`");
             var messageContainsResponsePrecondition = new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
                                                                                               "RPG.confirm");
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
-                                                    TimeSpan.FromSeconds(3),
+                                                    TimeSpan.FromSeconds(9),
                                                     messageContainsResponsePrecondition);
-            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true/* temporary */)
+            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm")
             {
                 await user.Buy(20, u =>
                 {
                     u.LifePoints = u.MaxLife;
-                },Context.Channel);
-                
+                }, Context.Channel);
+
             }
             else
             {
@@ -166,25 +168,26 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
             if (user?.AttachedFightContext == null)
             {
                 await ReplyAsync("You aren't in a fight");
-                
+
                 return;
             }
-            
+
             // await ReplyAsync($" Ouch ! {user.AttachedFightContext.TurnOfUser.Username} dealt {user.AttachedFightContext.Attack()} damage !");
             user.AttachedFightContext.Attack(async r =>
             {
                 IGameEntity[] actual = { user.AttachedFightContext.TurnOfEntity, user.AttachedFightContext.TurnOfEnemy }; // actual[0] is current, actual[1] is ennemy
-                await ReplyAsync(
-                    $@"{(r.IsCritical ? "CRITICAL ! " : "")}{actual[0].Name} dealt {r
-                        .AttackValue} damage !
+                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync(
+                                                   $@"{(r.IsCritical ? "CRITICAL ! " : "")}{actual[0].Name} dealt {r
+                                                       .AttackValue} damage !
 {actual[1].Name} : {actual[1].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[1].LifePoints,
                           actual[1].MaxLife)}
 {actual[0].Name} : {actual[0].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[0].LifePoints,
-                          actual[0].MaxLife)}");
+                          actual[0].MaxLife)}"));
+                ;
             });
-            
+
         }
 
         [Command("forcejson")]
@@ -336,7 +339,7 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
                                  .WithTitle($"Stats for {user.AttachedUser.Username}"));
         }
 
-        
+
         [Command("logout")]
         [Alias("disconnect")]
         [RequireOwner]
@@ -421,7 +424,7 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
             var discordSocketClient = Context.Client as DiscordSocketClient;
             if (discordSocketClient != null)
                 await ReplyAsync(
-                    $"**RPGgy** Version : **{Assembly.GetEntryAssembly().GetName().Version}**\n" +
+                    $"**RPGgy** <-|-> Version : **{Assembly.GetEntryAssembly().GetName().Version}**\n" +
                     $"- Author: {application.Owner.Username} (ID {application.Owner.Id})\n" +
                     $"- Library: Discord.Net ({DiscordConfig.Version})\n" +
                     $"- Runtime: {RuntimeInformation.FrameworkDescription} {RuntimeInformation.OSArchitecture}\n" +
@@ -431,7 +434,7 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
                     $"- Guilds: {discordSocketClient.Guilds.Count}\n" +
                     $"- Channels: {discordSocketClient.Guilds.Sum(g => g.Channels.Count)}\n" +
                     $"- Users: {discordSocketClient.Guilds.Sum(g => g.Users.Count)}\n" +
-                    "The source code of this bot is available of http://github.com/jeuxjeux20/RPGGY"                    
+                    "The source code of this bot is available on http://github.com/jeuxjeux20/RPGgy :D"
                 );
         }
 

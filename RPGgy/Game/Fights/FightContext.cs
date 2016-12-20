@@ -6,6 +6,25 @@ using RPGgy.Game.Core;
 using RPGgy.Game.Player;
 namespace RPGgy.Game.Fights
 {
+    public class TurnChangedEventArgs : EventArgs
+    {
+        public TurnChangedEventArgs(IWarriorUser current)
+        {
+            CurrentTurnUser = current;
+        }
+        public IWarriorUser CurrentTurnUser { get; private set; }
+    }
+    public class FightContextTerminatedEventArgs : EventArgs
+    {
+        public FightContextTerminatedEventArgs(IWarriorUser whoUser, IWarriorUser woonerUser)
+        {
+            WhoDiedUser = whoUser;
+            WinUser = woonerUser;
+        }
+
+        public IGameEntity WhoDiedUser { get; private set; }
+        public IGameEntity WinUser { get; private set; }
+    }
     public sealed class FightContext
     {
         private readonly Tuple<IUser, IUser> _actualTuple;
@@ -93,22 +112,3 @@ namespace RPGgy.Game.Fights
     }
 }
 
-public class TurnChangedEventArgs : EventArgs
-{
-    public TurnChangedEventArgs(IWarriorUser current)
-    {
-        CurrentTurnUser = current;
-    }
-    public IWarriorUser CurrentTurnUser { get; private set; }
-}
-public class FightContextTerminatedEventArgs : EventArgs
-{
-    public FightContextTerminatedEventArgs(IWarriorUser whoUser, IWarriorUser woonerUser)
-    {
-        WhoDiedUser = whoUser;
-        WinUser = woonerUser;
-    }
-
-    public IGameEntity WhoDiedUser { get; private set; }
-    public IGameEntity WinUser { get; private set; }
-}
