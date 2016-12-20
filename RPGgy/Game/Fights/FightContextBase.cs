@@ -1,16 +1,18 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Discord;
-using RPGgy.Game.Core;
 using RPGgy.Game.Player;
+
 namespace RPGgy.Game.Fights
 {
-    public sealed class FightContext
+    public abstract class FightContextBase
     {
-        private readonly Tuple<IUser, IUser> _actualTuple;
+        private Tuple<IUser, IUser> _actualTuple;
+        private bool _isSomeoneDead = false;
+        private bool _isAttacking = false;
 
-        public FightContext(IWarriorUser attackerParameter, IWarriorUser opponentParameter)
+        public FightContextBase(IWarriorUser attackerParameter, IWarriorUser opponentParameter)
         {
             Attacker = attackerParameter;
             Opponent = opponentParameter;
@@ -20,28 +22,21 @@ namespace RPGgy.Game.Fights
                                this);
         }
 
-        public event EventHandler<TurnChangedEventArgs> OnTurnChanged;
-
+        public virtual event EventHandler<TurnChangedEventArgs> OnTurnChanged;
         private IWarriorUser Attacker { get; }
         private IWarriorUser Opponent { get; }
-        private bool _isSomeoneDead = false;
+
         public static Dictionary<Tuple<IUser, IUser>, FightContext> ActualContexts { get; } =
             new Dictionary<Tuple<IUser, IUser>, FightContext>();
 
         public IWarriorUser TurnOfEntity { get; private set; }
-        // Ready guys ? 3, 2, 1... GO ! get, set, then get, then set, that's perfect ! continue ! ; get, set, mmm sir sorry i've hit a semicolon
-        public IUser TurnOfUser => TurnOfEntity.AttachedUser;
         public IWarriorUser TurnOfEnemy => TurnOfEntity == Attacker ? Opponent : Attacker;
-        public IUser TurnOfEnemyUser => TurnOfEnemy.AttachedUser;
-/*
-        private static Random Randomiser { get; } = new Random();
-*/
-        private bool _isAttacking = false;
+
         public void Attack(Action<AttackContext> act)
         {
             if (_isSomeoneDead) return;
             _isAttacking = true;
-            Tuple<uint, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy);
+            Tuple<int, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy);
             act(new AttackContext(myAwesomeResult.Item1, myAwesomeResult.Item2));
             TurnChange();
             _isAttacking = false;
@@ -53,12 +48,12 @@ namespace RPGgy.Game.Fights
             TurnOfEntity = TurnOfEnemy;
             if (_isSomeoneDead) return;
             OnOnTurnChanged(new TurnChangedEventArgs(TurnOfEntity));
-        } // now, void is awaiting you, but you can't await void (in some cases). paradox = true = paradox;
+        }
 
         public async Task SomeoneDied(IWarriorUser who)
         {
             _isSomeoneDead = true;
-            OnDone(new FightContextTerminatedEventArgs(who, who == TurnOfEntity ? TurnOfEnemy : TurnOfEntity));
+            OnDone(new FightContextTerminatedEventArgs(who, TurnOfEntity));
             ActualContexts.Remove(_actualTuple);
             while (_isAttacking)
                 await Task.Delay(100);
@@ -66,7 +61,7 @@ namespace RPGgy.Game.Fights
             Opponent.AttachedFightContext = null;
         }
 
-        public event EventHandler<FightContextTerminatedEventArgs> Done;
+        public virtual event EventHandler<FightContextTerminatedEventArgs> Done;
 
         private void OnDone(FightContextTerminatedEventArgs e)
         {
@@ -75,40 +70,19 @@ namespace RPGgy.Game.Fights
 
         public class AttackContext : object
         {
-            public AttackContext(uint value, bool critical)
+            public AttackContext(int value, bool critical)
             {
                 AttackValue = value;
                 IsCritical = critical;
             }
 
-            public uint AttackValue { get; private set; }
+            public int AttackValue { get; private set; }
             public bool IsCritical { get; private set; }
         }
-
 
         private void OnOnTurnChanged(TurnChangedEventArgs e)
         {
             OnTurnChanged?.Invoke(this, e);
         }
     }
-}
-
-public class TurnChangedEventArgs : EventArgs
-{
-    public TurnChangedEventArgs(IWarriorUser current)
-    {
-        CurrentTurnUser = current;
-    }
-    public IWarriorUser CurrentTurnUser { get; private set; }
-}
-public class FightContextTerminatedEventArgs : EventArgs
-{
-    public FightContextTerminatedEventArgs(IWarriorUser whoUser, IWarriorUser woonerUser)
-    {
-        WhoDiedUser = whoUser;
-        WinUser = woonerUser;
-    }
-
-    public IGameEntity WhoDiedUser { get; private set; }
-    public IGameEntity WinUser { get; private set; }
 }

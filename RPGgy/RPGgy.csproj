@@ -172,6 +172,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Game\Items\Core\ItemBase.cs" />
     <Compile Include="Misc\Tools\ASCIIBar.cs" />
     <Compile Include="CommandHandler.cs" />
     <Compile Include="Game\Fights\FightContext.cs" />
@@ -186,6 +187,7 @@
     <Compile Include="Permissions\Attributes\MustBeInFightAttribute.cs" />
     <Compile Include="Permissions\Attributes\MustBeRegisteredAttribute.cs" />
     <Compile Include="Permissions\Attributes\MustHaveEnoughGold.cs" />
+    <Compile Include="Permissions\Attributes\UserMustBeOnlineParameter.cs" />
     <Compile Include="Permissions\Checkers\Cooldown.cs" />
     <Compile Include="Permissions\Attributes\CooldownedAttribute.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -202,6 +204,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Game\Player\WarriorUser.cs" />
+    <Compile Include="Public\Modules\Tools\RateLimitTools.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -217,9 +220,7 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Public\Modules\Tools\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -6,7 +6,6 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
@@ -19,6 +18,7 @@ using RPGgy.Game.Player;
 using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
 using Discord.Addons.InteractiveCommands;
+using RPGgy.Public.Modules.Tools;
 using ParameterInfo = Discord.Commands.ParameterInfo;
 
 // ReSharper disable UnusedMember.Global
@@ -51,6 +51,16 @@ namespace RPGgy.Public.Modules
             }
         }
 
+        [Command("lol")]
+        [Summary("lol")]
+        public async Task lol()
+        {
+            await ReplyAsync("lol ?");
+            var kek = await Interactive.WaitForMessage(Context.User,
+                                                       Context.Channel);
+            await ReplyAsync($"KEEEEEK : {kek.Content}");
+        }
+
         [Command("reloadjson")]
         [Summary("Reloads the json")]
         [RequireOwner]
@@ -67,7 +77,8 @@ namespace RPGgy.Public.Modules
         [MustBeRegistered]
         [MusntBeDead]
         [MusntBeInFight]
-        public async Task Fightstart([MustBeRegisteredParameter, MusntBeInFightParameter] IUser toFight)
+        public async Task Fightstart([MustBeRegisteredParameter, MusntBeInFightParameter]
+        [UserMustBeOnlineParameter] IUser toFight)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             if (user == null)
@@ -85,20 +96,32 @@ namespace RPGgy.Public.Modules
             var fight = new FightContext(user, usertoFight);
             fight.Done += async (sender, e) =>
         {
-            float randomMult = (new Random(DateTime.Now.Millisecond).Next(1, 20) / 100) + 1;
+            float randomMult = (new Random(DateTime.Now.Millisecond).Next(1, 20) / (float)100) + 1;
             float levelMult = (e.WhoDiedUser.Level / (float)e.WinUser.Level) * randomMult;
-            int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
-            int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * levelMult * randomMult);
-            await ReplyAsync($"Woo ! {e.WhoDiedUser.AttachedUser.Username} died !");
-            await ReplyAsync($@"Rewards for {e.WinUser.AttachedUser.Username} :
+            int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * levelMult); // the difference matters !
+            int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult);
+            await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($"Woo ! {e.WhoDiedUser.Name} died !"));
+            await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Rewards for {e.WinUser.Name} :
 Before applying the multiplier : {beforeMult} XP
-After applying the {randomMult:0.00%} multiplier : {finalResult} XP !");
+After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));          
             e.WinUser.Experience += finalResult;
+            
         };
             fight.OnTurnChanged += async (sender, e) =>
             {
-                await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !");
+                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !"));
             };
+        }
+
+        [Command("leavebattle"), Alias("surrender")]
+        [Summary("Leave the battle, YOU WILL DIE")]
+        [MustBeRegistered]
+        [MustBeInFight]
+        public async Task Leavebattle()
+        {
+            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
+            await ReplyAsync("You choosed to surrender ! (and die)");
+            user.LifePoints = 0;
         }
 
         [Command("heal")]
@@ -110,17 +133,18 @@ After applying the {randomMult:0.00%} multiplier : {finalResult} XP !");
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             await ReplyAsync($@"Are you sure you wanna buy a full heal for 20 gold ? You have {user.Gold} gold.
-Type `RPG.yes` or `RPG.no`");
+Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so");
+            var messageContainsResponsePrecondition = new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
+                                                                                              "RPG.confirm");
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
-                                                    TimeSpan.FromSeconds(15),
-                                                    new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
-                                                                                            "RPG.confirm"));
-            if (result.Content == "RPG.yes" || result.Content == "RPG.confirm")
+                                                    TimeSpan.FromSeconds(3),
+                                                    messageContainsResponsePrecondition);
+            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true/* temporary */)
             {
                 await user.Buy(20, u =>
                 {
-                    u.LifePoints = (int)u.MaxLife;
+                    u.LifePoints = u.MaxLife;
                 },Context.Channel);
                 
             }
@@ -155,10 +179,10 @@ Type `RPG.yes` or `RPG.no`");
                         .AttackValue} damage !
 {actual[1].Name} : {actual[1].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[1].LifePoints,
-                          (int)actual[1].MaxLife)}
+                          actual[1].MaxLife)}
 {actual[0].Name} : {actual[0].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[0].LifePoints,
-                          (int)actual[0].MaxLife)}");
+                          actual[0].MaxLife)}");
             });
             
         }
@@ -208,7 +232,7 @@ Type `RPG.yes` or `RPG.no`");
             }
             try
             {
-                user.UseStatPoint(stat, howMuch);
+                await user.UseStatPoint(stat, howMuch);
             }
             catch (WarriorUser.NoStatpointsException)
             {
@@ -367,7 +391,7 @@ Type `RPG.yes` or `RPG.no`");
 
         [Command("leave")]
         [Summary("Instructs the bot to leave this Guild.")]
-        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [RequireOwner]
         public async Task Leave()
         {
             if (Context.Guild == null)

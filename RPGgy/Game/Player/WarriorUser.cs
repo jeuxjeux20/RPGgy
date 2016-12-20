@@ -25,7 +25,7 @@ namespace RPGgy.Game.Player
         private static readonly Random Randomiser = new Random(DateTime.Now.Millisecond + (int)DateTime.Today.Ticks); // true random :ok_hand:
         private ushort _critical = 10;
         private BigInteger _experience;
-        private int _lifePoints;
+        private uint _lifePoints;
         private uint _gold = DefaultGold;
         // DEFAULTS 
         private const int DefaultAttack = 50;
@@ -36,7 +36,7 @@ namespace RPGgy.Game.Player
         // DEFAULTS
         public WarriorUser(IUser user,
             int attack = DefaultAttack,
-            int lifePoints = DefaultLifePoints,
+            uint lifePoints = DefaultLifePoints,
             AttackItem attItem = null,
             DefenseItem defItem = null)
         {
@@ -50,7 +50,7 @@ namespace RPGgy.Game.Player
         [UsedImplicitly] 
         public WarriorUser(ulong user, 
             int attack = DefaultAttack, 
-            int lifePoints = DefaultLifePoints,
+            uint lifePoints = DefaultLifePoints,
             uint maxLife = DefaultMaxLife,
             AttackItem attitem = null,
             DefenseItem defitem = null, 
@@ -85,7 +85,7 @@ namespace RPGgy.Game.Player
 
         public int Attack { get; set; }
 
-        public int LifePoints
+        public uint LifePoints
         {
             get { return _lifePoints; }
             set
@@ -97,7 +97,7 @@ namespace RPGgy.Game.Player
                 }
                 else if (value > MaxLife)
                 {
-                    _lifePoints = (int)MaxLife;
+                    _lifePoints = MaxLife;
                 }
                 else
                 {
@@ -157,28 +157,28 @@ namespace RPGgy.Game.Player
             }
         }
 
-        public Tuple<int, bool> AttackEntity(FightContext f, IGameEntity entity)
+        public Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity)
         {
-            if (f == null) return new Tuple<int, bool>(0, false);
+            if (f == null) return new Tuple<uint, bool>(0, false);
             bool isCrit;
             // ReSharper disable once AssignmentInConditionalExpression
             // ReSharper disable once Stupidity
             var moarAttack = (isCrit = Randomiser.Next(0, 100) < Critical)
                 ? AttackTotal + AttackTotal / 4
                 : AttackTotal;
-            int kek;
+            uint kek;
             entity.LifePoints -=
                 kek =
-                    Math.Max(
+                    (uint) Math.Max(
                         moarAttack * (Randomiser.Next(1, 25) / 100 + 1) + Randomiser.Next(1, 3) - entity.DefenseTotal,
                         Randomiser.Next(1, entity.Level));
-            return new Tuple<int, bool>(kek, isCrit);
+            return new Tuple<uint, bool>(kek, isCrit);
         }
 
         public uint MaxLife { get; set; } = DefaultMaxLife;
         public bool IsDead => LifePoints <= 0;
 
-        public void UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
+        public async Task UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
         {
             if (StatPoints <= 0) throw new NoStatpointsException();
             if (count > StatPoints) throw new NotEnoughStatpointsException();
@@ -196,6 +196,7 @@ namespace RPGgy.Game.Player
             {
                 throw new ArgumentException("Wait m8, i don't see eitherr attack or defense -,-");
             }
+            await GameContext.Serialize();
         }
 
         private async void WarriorUser_LevelUpEvent(object sender, LevelUpEventArgs e)

@@ -14,7 +14,7 @@ namespace RPGgy.Game.Core
         int Attack { get; set; }
 
         [JsonProperty("life")]
-        int LifePoints { get; set; }
+        uint LifePoints { get; set; }
 
         [JsonProperty("attitem")]
         AttackItem AttItem { get; set; }
@@ -54,7 +54,7 @@ namespace RPGgy.Game.Core
 
         bool IsDead { get; }
         event EventHandler Died;
-        Tuple<int, bool> AttackEntity(FightContext f, IGameEntity entity);
+        Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity);
 
         [JsonProperty("name")]
         string Name { get; }

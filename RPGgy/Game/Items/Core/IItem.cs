@@ -12,7 +12,7 @@ namespace RPGgy.Game.Items.Core
         ushort? Durability { get; set; }
 
         [JsonProperty("type")]
-        ItemType Type { get; }
+        ItemType? Type { get; }
 
         [JsonProperty("value")]
         int Value { get; set; }
@@ -21,6 +21,7 @@ namespace RPGgy.Game.Items.Core
     public enum ItemType
     {
         Attack,
-        Defense
+        Defense,
+        Unknown
     }
 }

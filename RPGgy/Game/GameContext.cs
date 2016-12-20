@@ -50,10 +50,10 @@ namespace RPGgy.Game
 
         private static async void WarriorsList_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            while (Serializing) await Task.Delay(100);
-                await Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));                           
-                await Serialize();
-                
+                await IsBusy.WaitAsync();
+                await Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));
+                IsBusy.Release();                           
+                await Serialize();               
         }
 
         public static void SerializeMapped()
