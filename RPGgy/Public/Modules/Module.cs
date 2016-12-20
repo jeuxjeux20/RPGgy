@@ -53,7 +53,7 @@ namespace RPGgy.Public.Modules
 
         [Command("lol")]
         [Summary("lol")]
-        public async Task lol()
+        public async Task Lol()
         {
             await ReplyAsync("lol ?");
             var kek = await Interactive.WaitForMessage(Context.User,
@@ -259,12 +259,11 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
         [Summary("Get the stats of your fighter !")]
         [MustBeRegistered]
         [SuppressMessage("ReSharper", "PossibleNullReferenceException")] // because it's checked with MuseBeRegistered and STOP nagging me pls
-        public async Task Stats()
+        public async Task Stats([MustBeRegisteredParameter(true)] IUser cth = null)
         {
-            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-
+            var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(cth ?? Context.User));
             await ReplyAsync("", embed: new EmbedBuilder()
-                                 .WithThumbnailUrl(Context.User.AvatarUrl)
+                                 .WithThumbnailUrl((cth ?? Context.User).AvatarUrl)
                                  .AddField(builder =>
                                  {
                                      builder.Name = "Attack stat :";
@@ -336,6 +335,8 @@ Type `RPG.yes` or `RPG.no` wait no because InteractiveCommands doesn't work so")
                                                       .WithIsInline(true))
                                  .WithTitle($"Stats for {user.AttachedUser.Username}"));
         }
+
+        
         [Command("logout")]
         [Alias("disconnect")]
         [RequireOwner]
