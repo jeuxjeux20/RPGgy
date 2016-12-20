@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Channels;
 using System.Text;
@@ -18,6 +19,7 @@ using RPGgy.Game.Player;
 using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
 using Discord.Addons.InteractiveCommands;
+using ParameterInfo = Discord.Commands.ParameterInfo;
 
 // ReSharper disable UnusedMember.Global
 // Because m8, you didn't know that discord.net uses some magic that we call reflection ! No, it's not about mirrors.
@@ -65,7 +67,7 @@ namespace RPGgy.Public.Modules
         [MustBeRegistered]
         [MusntBeDead]
         [MusntBeInFight]
-        public async Task Fightstart([MustBeRegisteredParameter] [MusntBeInFightParameter] IUser toFight)
+        public async Task Fightstart([MustBeRegisteredParameter, MusntBeInFightParameter] IUser toFight)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             if (user == null)
@@ -116,11 +118,11 @@ Type `RPG.yes` or `RPG.no`");
                                                                                             "RPG.confirm"));
             if (result.Content == "RPG.yes" || result.Content == "RPG.confirm")
             {
-                var m = await ReplyAsync("Buying... :moneybag: <- :money_with_wings: 20 gold");
-                await Task.Delay(125);
-                user.Gold -= 20;
-                user.LifePoints = (int) user.MaxLife;
-                await m.ModifyAsync(modifier => modifier.Content=":heavy_check_mark: The transaction has been succesfully executed !");
+                await user.Buy(20, u =>
+                {
+                    u.LifePoints = (int)u.MaxLife;
+                },Context.Channel);
+                
             }
             else
             {
@@ -167,7 +169,7 @@ Type `RPG.yes` or `RPG.no`");
         public async Task ForceJson()
         {
             var msg = await ReplyAsync(":sparkle: Serializing the JSON...");
-            GameContext.Serialize();
+            await GameContext.Serialize();
             await msg.ModifyAsync(param => param.Content = ":white_check_mark: JSON serialized !");
         }
 
@@ -219,7 +221,7 @@ Type `RPG.yes` or `RPG.no`");
                     $"You don't have enough stat points for this. (Requested : {howMuch} ; Available {user.StatPoints})");
                 return;
             }
-            await ReplyAsync($"Succesfully added {howMuch} points to the {WarriorUser.StatDictionary[stat]} stat");
+            await ReplyAsync($"Succesfully added {howMuch} points to the {stat.ToString()} stat");
         }
 
         [Command("exception")]
@@ -387,13 +389,14 @@ Type `RPG.yes` or `RPG.no`");
         }
 
         [Command("info")]
+        [Summary("You really need a summary for this ?")]
         public async Task Info()
         {
             var application = await Context.Client.GetApplicationInfoAsync();
             var discordSocketClient = Context.Client as DiscordSocketClient;
             if (discordSocketClient != null)
                 await ReplyAsync(
-                    $"{Format.Bold("Info")}\n" +
+                    $"**RPGgy** Version : **{Assembly.GetEntryAssembly().GetName().Version}**\n" +
                     $"- Author: {application.Owner.Username} (ID {application.Owner.Id})\n" +
                     $"- Library: Discord.Net ({DiscordConfig.Version})\n" +
                     $"- Runtime: {RuntimeInformation.FrameworkDescription} {RuntimeInformation.OSArchitecture}\n" +
@@ -401,8 +404,9 @@ Type `RPG.yes` or `RPG.no`");
                     $"{Format.Bold("Stats")}\n" +
                     $"- Heap Size: {GetHeapSize()} MB\n" +
                     $"- Guilds: {discordSocketClient.Guilds.Count}\n" +
-                    $"- Channels: {discordSocketClient.Guilds.Sum(g => g.Channels.Count)}" +
-                    $"- Users: {discordSocketClient.Guilds.Sum(g => g.Users.Count)}"
+                    $"- Channels: {discordSocketClient.Guilds.Sum(g => g.Channels.Count)}\n" +
+                    $"- Users: {discordSocketClient.Guilds.Sum(g => g.Users.Count)}\n" +
+                    "The source code of this bot is available of http://github.com/jeuxjeux20/RPGGY"                    
                 );
         }
 

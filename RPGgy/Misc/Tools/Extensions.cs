@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using RPGgy.Game.Player;
 
 namespace RPGgy.Misc.Tools
 {
-    static class Extensions
+    public static class Extensions
     {
-        // soon:tm:
+        //stupid func
     }
 }

@@ -17,6 +17,7 @@ namespace RPGgy.Game
 
         static GameContext()
         {
+            IsBusy.WaitAsync();
             try
             {
                 using (var sr = new StreamReader("warriors.json"))
@@ -37,29 +38,32 @@ namespace RPGgy.Game
             catch (Exception ex)
             {
                 Program.Log(new LogMessage(LogSeverity.Error, "JSONParse", "Something very weird happened", ex));
-            }
-            Serializing = false;
+            }           
+            IsBusy.Release();
             WarriorsList.CollectionChanged += WarriorsList_CollectionChanged;
+            Serializing = false;
         }
 
         [JsonProperty("players")]
         public static ObservableCollection<WarriorUser> WarriorsList { get; set; } =
             new ObservableCollection<WarriorUser>();
 
-        private static void WarriorsList_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private static async void WarriorsList_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));
-            Task.Run(() =>
-            {
-                IsBusy.Wait();
-                Serialize();
-                IsBusy.Release();
-            });
+            while (Serializing) await Task.Delay(100);
+                await Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));                           
+                await Serialize();
+                
         }
 
-        public static void Serialize()
+        public static void SerializeMapped()
         {
-            if (Serializing) return;
+            Task.Run(async () => await Serialize());
+        }
+        public static async Task Serialize()
+        {
+            await IsBusy.WaitAsync();
+            Serializing = true;
             using (var sw = new StreamWriter("warriors.json", false))
             {
                 JsonSerializer.Create(new JsonSerializerSettings
@@ -69,16 +73,15 @@ namespace RPGgy.Game
                                           Formatting = Formatting.Indented
                                       }).Serialize(sw, WarriorsList);
             }
+            IsBusy.Release();
+            Serializing = false;
         }
 
         public static async Task Deserialize()
         {
-            await Task.Run(() =>
-            {
-                IsBusy.Wait();
+                await IsBusy.WaitAsync();
                 DeserializeCore();
                 IsBusy.Release();
-            });
         }
 
         private static void DeserializeCore()

@@ -5,7 +5,7 @@ using System.IO;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using System.Threading;
+using System.Threading.Tasks;
 using Discord;
 using Discord.Net;
 using JetBrains.Annotations;
@@ -20,20 +20,24 @@ namespace RPGgy.Game.Player
     [JsonObject(MemberSerialization.OptIn, Title = "WarriorUser")]
     public class WarriorUser : IWarriorUser, INotifyPropertyChanged
     {
-        public static readonly Dictionary<StatPoint, string> StatDictionary = new Dictionary<StatPoint, string>
-                                                                              {
-                                                                                  {StatPoint.Attack, "Attack"},
-                                                                                  {StatPoint.Defense, "Defense"}
-                                                                              };
-
+        
         private static readonly JsonSerializer Json = new JsonSerializer();
-        private static readonly Random Randomiser = new Random();
+        private static readonly Random Randomiser = new Random(DateTime.Now.Millisecond + (int)DateTime.Today.Ticks); // true random :ok_hand:
         private ushort _critical = 10;
         private BigInteger _experience;
         private int _lifePoints;
-        private uint _gold = 100;
-
-        public WarriorUser(IUser user, int attack = 25, int lifePoints = 250, AttackItem attItem = null,
+        private uint _gold = DefaultGold;
+        // DEFAULTS 
+        private const int DefaultAttack = 50;
+        private const int DefaultDefense = 30;
+        private const int DefaultLifePoints = 200;
+        private const int DefaultMaxLife = 200;
+        private const int DefaultGold = 250;
+        // DEFAULTS
+        public WarriorUser(IUser user,
+            int attack = DefaultAttack,
+            int lifePoints = DefaultLifePoints,
+            AttackItem attItem = null,
             DefenseItem defItem = null)
         {
             LevelUpEvent += WarriorUser_LevelUpEvent;
@@ -43,9 +47,14 @@ namespace RPGgy.Game.Player
         }
 
         [JsonConstructor]
-        [UsedImplicitly]
-        public WarriorUser(ulong user, int attack = 50, int lifePoints = 50, AttackItem attitem = null,
-            DefenseItem defitem = null) // For JSON
+        [UsedImplicitly] 
+        public WarriorUser(ulong user, 
+            int attack = DefaultAttack, 
+            int lifePoints = DefaultLifePoints,
+            uint maxLife = DefaultMaxLife,
+            AttackItem attitem = null,
+            DefenseItem defitem = null, 
+            uint gold = DefaultGold) // For JSON
         {
             LevelUpEvent += WarriorUser_LevelUpEvent;
             Attack = attack;
@@ -53,9 +62,11 @@ namespace RPGgy.Game.Player
             AttachedUserId = user;
             AttItem = attitem ?? AttackItem.DeaultAttackItem;
             DefItem = defitem ?? DefenseItem.DefaultDefenseItem;
+            Gold = gold;
             if (attitem == null || defitem == null)
                 Program.Log(new LogMessage(LogSeverity.Debug, "GameCtor", "god damn"));
             Died += WarriorUser_Died;
+            
         }
 
         public List<IItem> Inventory { get; } = new List<IItem>();
@@ -86,13 +97,13 @@ namespace RPGgy.Game.Player
                 }
                 else if (value > MaxLife)
                 {
-                    _lifePoints = (int) MaxLife;
+                    _lifePoints = (int)MaxLife;
                 }
                 else
                 {
                     _lifePoints = value;
                 }
-                GameContext.Serialize();
+                GameContext.SerializeMapped();
             }
         }
 
@@ -105,7 +116,7 @@ namespace RPGgy.Game.Player
             set { AttachedUser = Program.Instance.Client.GetUser(value); }
         }
 
-        public int Defense { get; set; } = 10;
+        public int Defense { get; set; } = DefaultDefense;
 
         public short Level { get; set; } = 1;
 
@@ -125,7 +136,7 @@ namespace RPGgy.Game.Player
 
 
         public BigInteger ExperienceNeededForNextLevel => ExperienceObjective - Experience;
-        public BigInteger ExperienceObjective => (ulong) (Level * (20 + Math.Pow(Level, Level * 0.015 + 1)));
+        public BigInteger ExperienceObjective => (ulong)(Level * (20 + Math.Pow(Level, Level * 0.015 + 1)));
         public event EventHandler<LevelUpEventArgs> LevelUpEvent;
 
         public string Name => AttachedUser.Username + "#" + AttachedUser.Discriminator;
@@ -164,7 +175,7 @@ namespace RPGgy.Game.Player
             return new Tuple<int, bool>(kek, isCrit);
         }
 
-        public uint MaxLife { get; set; } = 500;
+        public uint MaxLife { get; set; } = DefaultMaxLife;
         public bool IsDead => LifePoints <= 0;
 
         public void UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
@@ -213,11 +224,11 @@ namespace RPGgy.Game.Player
         }
 
         [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual async void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             // Program.Log(new LogMessage(LogSeverity.Info, "Warrior", "WOAH! i got called ;)"));
-            GameContext.Serialize();          
+            await GameContext.Serialize();
         }
 
         /// <summary>
@@ -226,9 +237,25 @@ namespace RPGgy.Game.Player
         public uint Gold
         {
             get { return _gold; }
-            set { _gold = value; OnPropertyChanged();}
+            set { _gold = value; OnPropertyChanged(); }
         }
 
+        public async Task Buy(uint cost, Action<IWarriorUser> action,IMessageChannel channel = null)
+        {
+            if (cost > Gold)
+                throw new NotEnoughGoldException("You don't have enough gold to buy this.");
+            Gold -= cost;
+            if (channel != null)
+            {
+                var message = await channel.SendMessageAsync($"Buying... :moneybag: <- :money_with_wings: {cost} gold");
+                using (channel.EnterTypingState())
+                {
+                    await Task.Delay(2500);
+                    action(this);
+                    await message.ModifyAsync(modifier => modifier.Content = ":heavy_check_mark: The transaction has been succesfully executed !");
+                }
+            }            
+        }
 
         [Serializable]
         public class NoStatpointsException : Exception
@@ -288,6 +315,34 @@ namespace RPGgy.Game.Player
             }
         }
 
+        [Serializable]
+        public class NotEnoughGoldException : Exception
+        {
+            //
+            // For guidelines regarding the creation of new exception types, see
+            //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/cpgenref/html/cpconerrorraisinghandlingguidelines.asp
+            // and
+            //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dncscol/html/csharp07192001.asp
+            //
+
+            public NotEnoughGoldException()
+            {
+            }
+
+            public NotEnoughGoldException(string message) : base(message)
+            {
+            }
+
+            public NotEnoughGoldException(string message, Exception inner) : base(message, inner)
+            {
+            }
+
+            protected NotEnoughGoldException(
+                SerializationInfo info,
+                StreamingContext context) : base(info, context)
+            {
+            }
+        }
         public class LevelUpEventArgs : EventArgs
         {
             public LevelUpEventArgs(WarriorUser warrior)

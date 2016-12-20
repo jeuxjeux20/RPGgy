@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Discord;
 using Newtonsoft.Json;
 using RPGgy.Game.Core;
@@ -23,5 +24,6 @@ namespace RPGgy.Game.Player
         event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;
         [JsonProperty("gold")]
         uint Gold { get; set; }
+        Task Buy(uint cost,Action<IWarriorUser> action,IMessageChannel channel = null);
     }
 }
