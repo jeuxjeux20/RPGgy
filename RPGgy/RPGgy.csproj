@@ -189,6 +189,7 @@
     <Compile Include="Permissions\Attributes\MustBeRegisteredAttribute.cs" />
     <Compile Include="Permissions\Attributes\MustHaveEnoughGold.cs" />
     <Compile Include="Permissions\Attributes\UserMustBeOnlineParameter.cs" />
+    <Compile Include="Permissions\Attributes\UserParameterMusntBeItself.cs" />
     <Compile Include="Permissions\Checkers\Cooldown.cs" />
     <Compile Include="Permissions\Attributes\CooldownedAttribute.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

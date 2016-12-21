@@ -78,21 +78,13 @@ namespace RPGgy.Public.Modules
         [MustBeRegistered]
         [MusntBeDead]
         [MusntBeInFight]
-        public async Task Fightstart([MustBeRegisteredParameter, MusntBeInFightParameter]
-        [UserMustBeOnlineParameter] IUser toFight)
+        public async Task Fightstart(
+        [MustBeRegisteredParameter, MusntBeInFightParameter]
+        [UserMustBeOnlineParameter]
+        [UserParameterMusntBeItself("You can't fight yourself, idiot")] IUser toFight)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
-            if (user == null)
-            {
-                await ReplyAsync("You aren't registered ! register using RPG.createuser :smiley:");
-                return;
-            }
             var usertoFight = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(toFight));
-            if (usertoFight == null)
-            {
-                await ReplyAsync("This guy isn't registered");
-                return;
-            }
             await ReplyAsync($"Here it goes ! {Context.User.Mention} is attacking {toFight.Mention} !" +
                              $":crossed_swords: It's now {Context.User.Mention}'s turn !");
             var fight = new FightContext(user, usertoFight);
@@ -135,14 +127,14 @@ After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             await ReplyAsync($@"Are you sure you wanna buy a full heal for 20 gold ? You have {user.Gold} gold.
-Type `RPG.yes` or `RPG.no`");
+Type `RPG.yes` or `RPG.no` BUT idk InteractiveCommands is screwed up for no reasons, so yeah buying :p");
             var messageContainsResponsePrecondition = new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
                                                                                               "RPG.confirm");
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
-                                                    TimeSpan.FromSeconds(9),
+                                                    TimeSpan.FromSeconds(1),
                                                     messageContainsResponsePrecondition);
-            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm")
+            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true) // true while it's not fixed :(
             {
                 await user.Buy(20, u =>
                 {
@@ -184,7 +176,7 @@ Type `RPG.yes` or `RPG.no`");
                           actual[1].MaxLife)}
 {actual[0].Name} : {actual[0].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[0].LifePoints,
-                          actual[0].MaxLife)}"));
+                          actual[0].MaxLife)}")).DeleteAfter(7000);
                 ;
             });
 

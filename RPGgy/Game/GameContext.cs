@@ -20,6 +20,7 @@ namespace RPGgy.Game
             NullValueHandling = NullValueHandling.Ignore,
             Formatting = Formatting.Indented
         };
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1065:DoNotRaiseExceptionsInUnexpectedLocations")]
         static GameContext()
         {
             IsBusy.WaitAsync();

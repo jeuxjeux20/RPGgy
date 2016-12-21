@@ -15,6 +15,7 @@ using RPGgy.Game.Fights;
 using RPGgy.Game.Items;
 using RPGgy.Game.Items.Core;
 using RPGgy.Misc.Tools;
+using RPGgy.Public.Modules.Tools;
 
 namespace RPGgy.Game.Player
 {
@@ -63,7 +64,7 @@ namespace RPGgy.Game.Player
             AttachedUserId = user;
             AttItem = attitem ?? AttackItem.DeaultAttackItem;
             DefItem = defitem ?? DefenseItem.DefaultDefenseItem;
-            Gold = gold;
+            _gold = gold;
             if (attitem == null || defitem == null)
                 Program.Log(new LogMessage(LogSeverity.Debug, "GameCtor", "god damn"));
             Died += WarriorUser_Died;
@@ -130,14 +131,14 @@ namespace RPGgy.Game.Player
                 OnPropertyChanged();
                 if (_experience < ExperienceObjective) return;
                 while (_experience >= ExperienceObjective)
-                    LevelUpEvent?.Invoke(this, new LevelUpEventArgs(this));
+                    LevelUpEvent?.Invoke(this, new LevelUpEventArgs(this,(uint)Level));
                 OnPropertyChanged();
             }
         }
 
 
         public BigInteger ExperienceNeededForNextLevel => ExperienceObjective - Experience;
-        public BigInteger ExperienceObjective => (ulong)(Level * (20 + Math.Pow(Level, Level * 0.015 + 1)));
+        public BigInteger ExperienceObjective => (ulong)(Level * (25 + Math.Pow(Level, Level * 0.06 + 1)));
         public event EventHandler<LevelUpEventArgs> LevelUpEvent;
 
         public string Name => AttachedUser.Username + "#" + AttachedUser.Discriminator;
@@ -205,20 +206,15 @@ namespace RPGgy.Game.Player
         {
             Level += 1;
             StatPoints += 1;
-            try
-            {
-                var thing = e.Warrior.AttachedUser.CreateDMChannelAsync().Result; // ensure locking              
-                string waitWhat = $"You level-uped to {e.Warrior.Level}";
-                await thing.SendMessageAsync(waitWhat);
-            }
-            catch (RateLimitedException)
-            {
-            }
+              var thing = e.Warrior.AttachedUser.CreateDMChannelAsync().Result; // ensure locking              
+                string waitWhat = $"You level-uped to {e.Level}";
+                await RateLimitTools.RetryRatelimits(async () => await thing.SendMessageAsync(waitWhat));            
         }
 
-        private void WarriorUser_Died(object sender, EventArgs e)
+        private async void WarriorUser_Died(object sender, EventArgs e)
         {
-            AttachedFightContext?.SomeoneDied(this);
+            Task someoneDied = AttachedFightContext?.SomeoneDied(this);
+            if (someoneDied != null) await someoneDied;
         }
 
         public void ToJson(TextWriter tw)
@@ -348,12 +344,13 @@ namespace RPGgy.Game.Player
         }
         public class LevelUpEventArgs : EventArgs
         {
-            public LevelUpEventArgs(WarriorUser warrior)
+            public LevelUpEventArgs(WarriorUser warrior,uint level)
             {
                 Warrior = warrior;
+                Level = level + 1;
             }
-
             public WarriorUser Warrior { get; }
+            public uint Level { get; }
         }
     }
 
