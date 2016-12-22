@@ -14,7 +14,7 @@ namespace RPGgy.Game.Core
         int Attack { get; set; }
 
         [JsonProperty("life")]
-        uint LifePoints { get; set; }
+        int LifePoints { get; set; }
 
         [JsonProperty("attitem")]
         AttackItem AttItem { get; set; }
@@ -50,11 +50,11 @@ namespace RPGgy.Game.Core
         ushort Critical { get; set; }
 
         [JsonProperty("maxlife")]
-        uint MaxLife { get; set; }
+        int MaxLife { get; set; }
 
         bool IsDead { get; }
         event EventHandler Died;
-        Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity,TimeSpan? time = null);
+        Tuple<int, bool> AttackEntity(FightContext f, IGameEntity entity,TimeSpan? time = null);
 
         [JsonProperty("name")]
         string Name { get; }

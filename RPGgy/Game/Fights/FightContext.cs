@@ -62,7 +62,7 @@ namespace RPGgy.Game.Fights
         {
             if (_isSomeoneDead) return;
             _isAttacking = true;
-            Tuple<uint, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy,TimeTook.Elapsed);
+            Tuple<int, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy,TimeTook.Elapsed);
             act(new AttackContext(myAwesomeResult.Item1, myAwesomeResult.Item2));
             TurnChange();
             _isAttacking = false;
@@ -97,13 +97,13 @@ namespace RPGgy.Game.Fights
 
         public class AttackContext : object
         {
-            public AttackContext(uint value, bool critical)
+            public AttackContext(int value, bool critical)
             {
                 AttackValue = value;
                 IsCritical = critical;
             }
 
-            public uint AttackValue { get; private set; }
+            public int AttackValue { get; private set; }
             public bool IsCritical { get; private set; }
         }
 

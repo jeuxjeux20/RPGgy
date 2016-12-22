@@ -34,7 +34,7 @@ namespace RPGgy.Game.Player
         private static readonly Random Randomiser = new Random(DateTime.Now.Millisecond + (int)DateTime.Today.Ticks); // true random :ok_hand:
         private ushort _critical = 10;
         private BigInteger _experience;
-        private uint _lifePoints;
+        private int _lifePoints;
         private uint _gold = DefaultGold;
         // DEFAULTS 
         private const int DefaultAttack = 50;
@@ -45,7 +45,7 @@ namespace RPGgy.Game.Player
         // DEFAULTS
         public WarriorUser(IUser user,
             int attack = DefaultAttack,
-            uint lifePoints = DefaultLifePoints,
+            int lifePoints = DefaultLifePoints,
             AttackItem attItem = null,
             DefenseItem defItem = null)
         {
@@ -59,7 +59,7 @@ namespace RPGgy.Game.Player
         [UsedImplicitly]
         public WarriorUser(ulong user,
             int attack = DefaultAttack,
-            uint lifePoints = DefaultLifePoints,
+            int lifePoints = DefaultLifePoints,
             uint maxLife = DefaultMaxLife,
             AttackItem attitem = null,
             DefenseItem defitem = null,
@@ -94,12 +94,12 @@ namespace RPGgy.Game.Player
 
         public int Attack { get; set; }
 
-        public uint LifePoints
+        public int LifePoints
         {
             get { return _lifePoints; }
             set
             {
-                if (_lifePoints.SafeSubstract(value) <= 0)
+                if (value <= 0)
                 {
                     Died?.Invoke(this, null);
                     _lifePoints = 0;
@@ -111,13 +111,6 @@ namespace RPGgy.Game.Player
                 else
                 {
                     _lifePoints = value;
-                }
-                if (_lifePoints > int.MaxValue)
-                {
-                    Program.Log(new LogMessage(LogSeverity.Critical, "LifeHandle",
-                                               "The life points got over the max value of int, this is bad news."));
-                    _lifePoints = 0;
-                    Died?.Invoke(this, null);
                 }
                 GameContext.SerializeMapped();
             }
@@ -173,9 +166,9 @@ namespace RPGgy.Game.Player
             }
         }
 
-        public Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity, TimeSpan? timeTook = null)
+        public Tuple<int, bool> AttackEntity(FightContext f, IGameEntity entity, TimeSpan? timeTook = null)
         {
-            if (f == null) return new Tuple<uint, bool>(0, false);
+            if (f == null) return new Tuple<int, bool>(0, false);
             bool isCrit;
             float mult;
             if (timeTook != null)
@@ -191,19 +184,17 @@ namespace RPGgy.Game.Player
             var moarAttack = (isCrit = Randomiser.Next(0, 100) < Critical)
                 ? AttackTotal + AttackTotal / 4
                 : AttackTotal;
-            uint kek;
-            entity.LifePoints = entity.LifePoints.SafeSubstract(kek =
-                                                (uint)((uint)Math.Max(
-                                                            moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
-                                                            Randomiser.Next(1, 3) - entity.DefenseTotal,
-                                                            Randomiser.Next(
-                                                                1,
-                                                                entity.Level)) * mult));
+            int kek;
+            entity.LifePoints -= kek =
+                                                (int) (Math.Max(
+                                                           moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
+                                                           Randomiser.Next(1, 3) - entity.DefenseTotal,
+                                                           Randomiser.Next(1,entity.Level)) * mult);
 
-            return new Tuple<uint, bool>(kek, isCrit);
+            return new Tuple<int, bool>(kek, isCrit);
         }
 
-        public uint MaxLife { get; set; } = DefaultMaxLife;
+        public int MaxLife { get; set; } = DefaultMaxLife;
         public bool IsDead => LifePoints <= 0;
 
         public async Task UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
@@ -299,7 +290,7 @@ namespace RPGgy.Game.Player
         {
             public AttackItem AttackItemChange { get; set; } = null;
             public DefenseItem DefenseItemChange { get; set; } = null;
-            public uint? LifePointsChange { get; set; } = null;
+            public int? LifePointsChange { get; set; } = null;
         }
 
         [Serializable]

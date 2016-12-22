@@ -1,4 +1,6 @@
-﻿namespace RPGgy.Misc.Tools
+﻿using System;
+
+namespace RPGgy.Misc.Tools
 {
     internal class AsciiBar
     {
@@ -41,6 +43,11 @@
                 if (progress[i] != '[' && progress[i] != ']' && progress[i] != '#')
                     progress[i] = '-';
             return new string(progress);
+        }
+
+        internal static object DrawProgressBar(int lifePoints, int maxLife)
+        {
+            return DrawProgressBar((uint) lifePoints, (uint) maxLife);
         }
     }
 }
