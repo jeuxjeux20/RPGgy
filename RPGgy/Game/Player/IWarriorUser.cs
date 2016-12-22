@@ -22,8 +22,7 @@ namespace RPGgy.Game.Player
 
         bool IsOk(IUser testUser);
         event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;
-        [JsonProperty("gold")]
-        uint Gold { get; set; }
+
         Task Buy(uint cost,Action<IWarriorUser> action,IMessageChannel channel = null);
     }
 }

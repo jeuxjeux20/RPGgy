@@ -81,7 +81,8 @@ namespace RPGgy.Public.Modules
         public async Task Fightstart(
         [MustBeRegisteredParameter, MusntBeInFightParameter]
         [UserMustBeOnlineParameter]
-        [UserParameterMusntBeItself("You can't fight yourself, idiot")] IUser toFight)
+        [UserParameterMusntBeItself("You can't fight yourself, idiot")]
+        [UserMusntBeDeadParameter] IUser toFight)
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             var usertoFight = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(toFight));
@@ -94,17 +95,20 @@ namespace RPGgy.Public.Modules
             float levelMult = (e.WhoDiedUser.Level / (float)e.WinUser.Level) * randomMult;
             int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
             int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult); // aaa maybe
-            await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($"Woo ! {e.WhoDiedUser.Name} died !"));
-            await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Rewards for {e.WinUser.Name} :
+            uint goldStolen = (uint) (e.WhoDiedUser is IWarriorUser ? e.WhoDiedUser.Gold * levelMult : e.WhoDiedUser.Gold);
+            await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Woo ! {e.WhoDiedUser.Name} died !
+Rewards for {e.WinUser.Name} :
 Before applying the multiplier : {beforeMult} XP
-After applying the {randomMult:0.00%} multiplier : {finalResult} XP !"));
+After applying the {randomMult:0.00%} multiplier : {finalResult} XP !
+Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
             e.WinUser.Experience += finalResult;
-
+            e.WhoDiedUser.Gold -= goldStolen;
+            e.WinUser.Gold += goldStolen;
         };
-            fight.OnTurnChanged += async (sender, e) =>
-            {
-                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !"));
-            };
+//            fight.OnTurnChanged += (sender, e) => // see later for combining attack and turn changes.
+//            {
+//                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !"));
+//            };
         }
 
         [Command("leavebattle"), Alias("surrender")]
@@ -132,7 +136,7 @@ Type `RPG.yes` or `RPG.no` BUT idk InteractiveCommands is screwed up for no reas
                                                                                               "RPG.confirm");
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
-                                                    TimeSpan.FromSeconds(1),
+                                                    TimeSpan.FromSeconds(6),
                                                     messageContainsResponsePrecondition);
             if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true) // true while it's not fixed :(
             {
@@ -176,7 +180,8 @@ Type `RPG.yes` or `RPG.no` BUT idk InteractiveCommands is screwed up for no reas
                           actual[1].MaxLife)}
 {actual[0].Name} : {actual[0].LifePoints} HP
 {AsciiBar.DrawProgressBar(actual[0].LifePoints,
-                          actual[0].MaxLife)}")).DeleteAfter(7000);
+                          actual[0].MaxLife)}
+:crossed_swords: It's now {actual[1].Mention}'s turn !")).DeleteAfter(6505);
                 ;
             });
 

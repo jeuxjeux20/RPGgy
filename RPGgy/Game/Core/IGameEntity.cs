@@ -58,5 +58,9 @@ namespace RPGgy.Game.Core
 
         [JsonProperty("name")]
         string Name { get; }
+        string Mention { get; }
+
+        [JsonProperty("gold")]
+        uint Gold { get; set; }
     }
 }

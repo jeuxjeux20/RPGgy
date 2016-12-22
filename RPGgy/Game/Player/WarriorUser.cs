@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -20,9 +21,15 @@ using RPGgy.Public.Modules.Tools;
 namespace RPGgy.Game.Player
 {
     [JsonObject(MemberSerialization.OptIn, Title = "WarriorUser")]
-    public class WarriorUser : IWarriorUser, INotifyPropertyChanged
+    public sealed class WarriorUser : IWarriorUser, INotifyPropertyChanged
     {
-        
+        public string Mention => AttachedUser.Mention;
+
+        public static WarriorUser GetUser(IUser findToken)
+        {
+            return GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(findToken));
+        }
+
         private static readonly JsonSerializer Json = new JsonSerializer();
         private static readonly Random Randomiser = new Random(DateTime.Now.Millisecond + (int)DateTime.Today.Ticks); // true random :ok_hand:
         private ushort _critical = 10;
@@ -223,7 +230,7 @@ namespace RPGgy.Game.Player
         }
 
         [NotifyPropertyChangedInvocator]
-        protected virtual async void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private async void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             // Program.Log(new LogMessage(LogSeverity.Info, "Warrior", "WOAH! i got called ;)"));
