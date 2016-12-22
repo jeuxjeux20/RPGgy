@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Discord;
 using RPGgy.Game.Core;
@@ -16,7 +17,7 @@ namespace RPGgy.Game.Fights
     }
     public class FightContextTerminatedEventArgs : EventArgs
     {
-        public FightContextTerminatedEventArgs(IWarriorUser whoUser, IWarriorUser woonerUser)
+        public FightContextTerminatedEventArgs(IGameEntity whoUser, IGameEntity woonerUser)
         {
             WhoDiedUser = whoUser;
             WinUser = woonerUser;
@@ -28,7 +29,7 @@ namespace RPGgy.Game.Fights
     public sealed class FightContext
     {
         private readonly Tuple<IUser, IUser> _actualTuple;
-
+        private Stopwatch TimeTook { get; } = new Stopwatch();
         public FightContext(IWarriorUser attackerParameter, IWarriorUser opponentParameter)
         {
             Attacker = attackerParameter;
@@ -37,6 +38,7 @@ namespace RPGgy.Game.Fights
             TurnOfEntity = Attacker;
             ActualContexts.Add(_actualTuple = new Tuple<IUser, IUser>(Attacker.AttachedUser, Opponent.AttachedUser),
                                this);
+            TimeTook.Start();
         }
 
         public event EventHandler<TurnChangedEventArgs> OnTurnChanged;
@@ -55,12 +57,12 @@ namespace RPGgy.Game.Fights
 /*
         private static Random Randomiser { get; } = new Random();
 */
-        private bool _isAttacking = false;
+        private bool _isAttacking;
         public void Attack(Action<AttackContext> act)
         {
             if (_isSomeoneDead) return;
             _isAttacking = true;
-            Tuple<uint, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy);
+            Tuple<uint, bool> myAwesomeResult = TurnOfEntity.AttackEntity(this, TurnOfEnemy,TimeTook.Elapsed);
             act(new AttackContext(myAwesomeResult.Item1, myAwesomeResult.Item2));
             TurnChange();
             _isAttacking = false;
@@ -70,6 +72,7 @@ namespace RPGgy.Game.Fights
         private void TurnChange() // how does it works !
         {            
             TurnOfEntity = TurnOfEnemy;
+            TimeTook.Restart();
             if (_isSomeoneDead) return;
             OnOnTurnChanged(new TurnChangedEventArgs(TurnOfEntity));
         } // now, void is awaiting you, but you can't await void (in some cases). paradox = true = paradox;

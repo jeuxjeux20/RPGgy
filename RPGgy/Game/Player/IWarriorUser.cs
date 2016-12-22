@@ -23,6 +23,6 @@ namespace RPGgy.Game.Player
         bool IsOk(IUser testUser);
         event EventHandler<WarriorUser.LevelUpEventArgs> LevelUpEvent;
 
-        Task Buy(uint cost,Action<IWarriorUser> action,IMessageChannel channel = null);
+        Task Buy(uint cost, WarriorUser.ShopChanges changes, IMessageChannel channel = null);
     }
 }

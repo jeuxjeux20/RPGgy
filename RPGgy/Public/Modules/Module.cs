@@ -91,11 +91,14 @@ namespace RPGgy.Public.Modules
             var fight = new FightContext(user, usertoFight);
             fight.Done += async (sender, e) =>
         {
-            float randomMult = (new Random(DateTime.Now.Millisecond).Next(1, 20) / (float)100) + 1;
-            float levelMult = (e.WhoDiedUser.Level / (float)e.WinUser.Level) * randomMult;
+            float randomMult = new Random(DateTime.Now.Millisecond).Next(1, 20) / (float)100 + 1;
+            float levelMult = e.WhoDiedUser.Level / (float)e.WinUser.Level * randomMult;
             int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
             int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult); // aaa maybe
-            uint goldStolen = (uint) (e.WhoDiedUser is IWarriorUser ? e.WhoDiedUser.Gold * levelMult : e.WhoDiedUser.Gold);
+            uint goldStolen = (uint)
+            (e.WhoDiedUser is IWarriorUser ? 
+            Math.Min(e.WhoDiedUser.Gold / (float)8,e.WhoDiedUser.Gold) * levelMult :
+            e.WhoDiedUser.Gold);
             await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Woo ! {e.WhoDiedUser.Name} died !
 Rewards for {e.WinUser.Name} :
 Before applying the multiplier : {beforeMult} XP
@@ -140,10 +143,10 @@ Type `RPG.yes` or `RPG.no` BUT idk InteractiveCommands is screwed up for no reas
                                                     messageContainsResponsePrecondition);
             if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true) // true while it's not fixed :(
             {
-                await user.Buy(20, u =>
-                {
-                    u.LifePoints = u.MaxLife;
-                }, Context.Channel);
+                await user.Buy(20,new WarriorUser.ShopChanges
+                                  {
+                                      LifePointsChange = user.MaxLife
+                                  }, Context.Channel);
 
             }
             else

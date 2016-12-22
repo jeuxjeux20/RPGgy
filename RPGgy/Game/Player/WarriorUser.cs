@@ -56,13 +56,13 @@ namespace RPGgy.Game.Player
         }
 
         [JsonConstructor]
-        [UsedImplicitly] 
-        public WarriorUser(ulong user, 
-            int attack = DefaultAttack, 
+        [UsedImplicitly]
+        public WarriorUser(ulong user,
+            int attack = DefaultAttack,
             uint lifePoints = DefaultLifePoints,
             uint maxLife = DefaultMaxLife,
             AttackItem attitem = null,
-            DefenseItem defitem = null, 
+            DefenseItem defitem = null,
             uint gold = DefaultGold) // For JSON
         {
             LevelUpEvent += WarriorUser_LevelUpEvent;
@@ -75,7 +75,7 @@ namespace RPGgy.Game.Player
             if (attitem == null || defitem == null)
                 Program.Log(new LogMessage(LogSeverity.Debug, "GameCtor", "god damn"));
             Died += WarriorUser_Died;
-            
+
         }
 
         public List<IItem> Inventory { get; } = new List<IItem>();
@@ -99,7 +99,7 @@ namespace RPGgy.Game.Player
             get { return _lifePoints; }
             set
             {
-                if (value <= 0)
+                if (_lifePoints.SafeSubstract(value) <= 0)
                 {
                     Died?.Invoke(this, null);
                     _lifePoints = 0;
@@ -111,6 +111,13 @@ namespace RPGgy.Game.Player
                 else
                 {
                     _lifePoints = value;
+                }
+                if (_lifePoints > int.MaxValue)
+                {
+                    Program.Log(new LogMessage(LogSeverity.Critical, "LifeHandle",
+                                               "The life points got over the max value of int, this is bad news."));
+                    _lifePoints = 0;
+                    Died?.Invoke(this, null);
                 }
                 GameContext.SerializeMapped();
             }
@@ -138,7 +145,7 @@ namespace RPGgy.Game.Player
                 OnPropertyChanged();
                 if (_experience < ExperienceObjective) return;
                 while (_experience >= ExperienceObjective)
-                    LevelUpEvent?.Invoke(this, new LevelUpEventArgs(this,(uint)Level));
+                    LevelUpEvent?.Invoke(this, new LevelUpEventArgs(this, (uint)Level));
                 OnPropertyChanged();
             }
         }
@@ -166,10 +173,19 @@ namespace RPGgy.Game.Player
             }
         }
 
-        public Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity)
+        public Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity, TimeSpan? timeTook = null)
         {
             if (f == null) return new Tuple<uint, bool>(0, false);
             bool isCrit;
+            float mult;
+            if (timeTook != null)
+            {
+                mult = (float)(timeTook.Value.TotalSeconds / 5);
+            }
+            else
+            {
+                mult = 1;
+            }
             // ReSharper disable once AssignmentInConditionalExpression
             // ReSharper disable once Stupidity
             var moarAttack = (isCrit = Randomiser.Next(0, 100) < Critical)
@@ -177,11 +193,13 @@ namespace RPGgy.Game.Player
                 : AttackTotal;
             uint kek;
             entity.LifePoints = entity.LifePoints.SafeSubstract(kek =
-                                                (uint) Math.Max(
-                                                    moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
-                                                    Randomiser.Next(1, 3) - entity.DefenseTotal,
-                                                    Randomiser.Next(1, entity.Level)));
-                
+                                                (uint)((uint)Math.Max(
+                                                            moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
+                                                            Randomiser.Next(1, 3) - entity.DefenseTotal,
+                                                            Randomiser.Next(
+                                                                1,
+                                                                entity.Level)) * mult));
+
             return new Tuple<uint, bool>(kek, isCrit);
         }
 
@@ -213,9 +231,9 @@ namespace RPGgy.Game.Player
         {
             Level += 1;
             StatPoints += 1;
-              var thing = e.Warrior.AttachedUser.CreateDMChannelAsync().Result; // ensure locking              
-                string waitWhat = $"You level-uped to {e.Level}";
-                await RateLimitTools.RetryRatelimits(async () => await thing.SendMessageAsync(waitWhat));            
+            var thing = e.Warrior.AttachedUser.CreateDMChannelAsync().Result; // ensure locking              
+            string waitWhat = $"You level-uped to {e.Level}";
+            await RateLimitTools.RetryRatelimits(async () => await thing.SendMessageAsync(waitWhat));
         }
 
         private async void WarriorUser_Died(object sender, EventArgs e)
@@ -246,7 +264,21 @@ namespace RPGgy.Game.Player
             set { _gold = value; OnPropertyChanged(); }
         }
 
-        public async Task Buy(uint cost, Action<IWarriorUser> action,IMessageChannel channel = null)
+        private void ApplyChanges(ShopChanges changes)
+        {
+            this.LifePoints = changes.LifePointsChange ?? this.LifePoints;
+            this.AttItem = changes.AttackItemChange ?? AttItem;
+            DefItem = changes.DefenseItemChange ?? DefItem;
+        }
+        //public static WarriorUser operator +(WarriorUser warrior, ShopChanges changes)
+        //{
+        //    WarriorUser warriorUser = warrior;
+        //    warriorUser.LifePoints = changes.LifePointsChange ?? warriorUser.LifePoints;
+        //    warriorUser.AttItem = changes.AttackItemChange ?? warriorUser.AttItem;
+        //    warriorUser.DefItem = changes.DefenseItemChange ?? warriorUser.DefItem;
+        //    return warriorUser;
+        //}
+        public async Task Buy(uint cost, ShopChanges changes, IMessageChannel channel = null)
         {
             if (cost > Gold)
                 throw new NotEnoughGoldException("You don't have enough gold to buy this.");
@@ -257,10 +289,17 @@ namespace RPGgy.Game.Player
                 using (channel.EnterTypingState())
                 {
                     await Task.Delay(2500);
-                    action(this);
+                    ApplyChanges(changes);
                     await message.ModifyAsync(modifier => modifier.Content = ":heavy_check_mark: The transaction has been succesfully executed !");
                 }
-            }            
+            }
+        }
+
+        public class ShopChanges
+        {
+            public AttackItem AttackItemChange { get; set; } = null;
+            public DefenseItem DefenseItemChange { get; set; } = null;
+            public uint? LifePointsChange { get; set; } = null;
         }
 
         [Serializable]
@@ -351,7 +390,7 @@ namespace RPGgy.Game.Player
         }
         public class LevelUpEventArgs : EventArgs
         {
-            public LevelUpEventArgs(WarriorUser warrior,uint level)
+            public LevelUpEventArgs(WarriorUser warrior, uint level)
             {
                 Warrior = warrior;
                 Level = level + 1;

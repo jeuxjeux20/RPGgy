@@ -54,7 +54,7 @@ namespace RPGgy.Game.Core
 
         bool IsDead { get; }
         event EventHandler Died;
-        Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity);
+        Tuple<uint, bool> AttackEntity(FightContext f, IGameEntity entity,TimeSpan? time = null);
 
         [JsonProperty("name")]
         string Name { get; }
