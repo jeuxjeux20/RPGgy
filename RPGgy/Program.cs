@@ -4,6 +4,7 @@ using Discord;
 using Discord.Addons.InteractiveCommands;
 using Discord.Commands;
 using Discord.WebSocket;
+using RPGgy.Game;
 using RPGgy.Properties;
 
 namespace RPGgy
@@ -16,25 +17,31 @@ namespace RPGgy
         private Program()
         {
             Instance = this;
+            AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
+            AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
+            tokin = Settings.Default.Token;
+        }
+
+        private static void CurrentDomain_ProcessExit(object sender, EventArgs e)
+        {
+            Console.WriteLine(@"Goodbye :)");
+            GameContext.SerializeMapped();
         }
 
         public static DependencyMap Map { get; } = new DependencyMap();
         public static Program Instance { get; private set; }
 
         public static void Main(string[] args) =>
-            new Program().Start().GetAwaiter().GetResult();
+            new Program().Start(args ?? new [] {tokin}).GetAwaiter().GetResult();
 
-       
-        private async Task Start()
+        private static string tokin;
+        private async Task Start(string[] arguments)
         {
             
             // Define the DiscordSocketClient
             Client = new DiscordSocketClient();
 
-                Settings.Default.Upgrade();
-                Settings.Default.Save();
-           
-            var token = Settings.Default.Token;
+            var token = arguments.Length > 0 ? arguments[0] : tokin;
 
             // Login and connect to Discord.
             Again:

@@ -102,7 +102,7 @@ namespace RPGgy.Public.Modules
             await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Woo ! {e.WhoDiedUser.Name} died !
 Rewards for {e.WinUser.Name} :
 Before applying the multiplier : {beforeMult} XP
-After applying the {randomMult:0.00%} multiplier : {finalResult} XP !
+After applying the {randomMult:0%} multiplier : {finalResult} XP !
 Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
             e.WinUser.Experience += finalResult;
             e.WhoDiedUser.Gold -= goldStolen;
@@ -125,7 +125,7 @@ Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
             user.LifePoints = 0;
         }
 
-        [Command("heal")]
+        [Command("heal",RunMode = RunMode.Async)]
         [Summary("heals yourself")]
         [MustBeRegistered]
         [MusntBeInFight]
@@ -134,14 +134,15 @@ Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
         {
             var user = GameContext.WarriorsList.FirstOrDefault(war => war.IsOk(Context.User));
             await ReplyAsync($@"Are you sure you wanna buy a full heal for 20 gold ? You have {user.Gold} gold.
-Type `RPG.yes` or `RPG.no` BUT idk InteractiveCommands is screwed up for no reasons, so yeah buying :p");
+Type `RPG.yes` or `RPG.no`");
             var messageContainsResponsePrecondition = new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
                                                                                               "RPG.confirm");
+            
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
                                                     TimeSpan.FromSeconds(6),
                                                     messageContainsResponsePrecondition);
-            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm" || true) // true while it's not fixed :(
+            if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm") // true while it's not fixed :(
             {
                 await user.Buy(20,new WarriorUser.ShopChanges
                                   {

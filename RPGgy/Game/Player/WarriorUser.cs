@@ -173,7 +173,7 @@ namespace RPGgy.Game.Player
             float mult;
             if (timeTook != null)
             {
-                mult = (float)(timeTook.Value.TotalSeconds / 5);
+                mult = (float)Math.Max(timeTook.Value.TotalSeconds / 20,0.95);
             }
             else
             {
@@ -189,7 +189,7 @@ namespace RPGgy.Game.Player
                                                 (int) (Math.Max(
                                                            moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
                                                            Randomiser.Next(1, 3) - entity.DefenseTotal,
-                                                           Randomiser.Next(1,entity.Level)) * mult);
+                                                           Randomiser.Next(1,entity.Level)) / mult);
 
             return new Tuple<int, bool>(kek, isCrit);
         }
