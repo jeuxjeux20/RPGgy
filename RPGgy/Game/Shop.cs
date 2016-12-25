@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Discord;
 using JetBrains.Annotations;
@@ -34,6 +36,7 @@ namespace RPGgy.Game
                         ListOfItemBases.Remove(ListOfItemBases.FirstOrDefault(tup => tup.Item2 == this));
                     }
                     _quantity = value;
+                    SerializeTasked();
                 }
             }
             public uint Value { get; internal set; }
@@ -58,8 +61,55 @@ namespace RPGgy.Game
         static Shop()
         {
             // TODO: Serialization
+            IsBusy.WaitAsync();
+            try
+            {
+                using (var sr = new StreamReader("shop.json")) // initiate the streamreader to read
+                {
+                    if (sr.ReadToEnd().Length <= 2) throw new FileNotFoundException(); // if the file contains nothing or almost nothing throw an exception
+                    sr.BaseStream.Position = 0; // return back to the start of the file
+                    var myLovelyReader = new JsonTextReader(sr); // get a lovely jsontextreader for you <3
+                    ListOfItemBases =                                                                              // My variable will be set as...
+                        JsonSerializer.Create(JsonSerializerSettings).Deserialize<ObservableCollection<Tuple<ItemBase,ShopInfo>>>(myLovelyReader); // a deserialization using my lovely reader ! 
+                    Program.Log(new LogMessage(LogSeverity.Info, "JSONShop", "Parsed with success"));
+                }
+            }
+            catch (FileNotFoundException) // if the file is not found
+            {
+                Program.Log(new LogMessage(LogSeverity.Warning, "JSONShop", "File not found !"));
+            }
+            catch (Exception ex) // else that's weirdo
+            {
+                Program.Log(new LogMessage(LogSeverity.Error, "JSONShop", "Something very weird happened", ex));
+            }
+            IsBusy.Release();
+            ListOfItemBases.CollectionChanged += ListOfItemBases_CollectionChanged;
+        }
+        private static readonly SemaphoreSlim IsBusy = new SemaphoreSlim(1);
+        private static async void ListOfItemBases_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            await Serialize();
         }
 
+        public static void SerializeTasked()
+        {
+            Task.Run(async () => { await Serialize(); });
+        }
+        private static async Task Serialize()
+        {
+            await IsBusy.WaitAsync();
+            using (var sw = new StreamWriter("shop.json", false)) // we init again
+            {
+                JsonSerializer.Create(JsonSerializerSettings).Serialize(sw, ListOfItemBases); // we deserialize, jsonSerializerSettings is OPTIONAL
+            }
+            IsBusy.Release();
+        }
+        private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore,
+            Formatting = Formatting.Indented
+        };
         public static string BuyString(int index,uint goldAvailable)
         {
             var item = GetItem(index);

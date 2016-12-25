@@ -12,7 +12,7 @@ namespace RPGgy.Game
 {
     public static class GameContext
     {
-        public static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
+        private static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
         public static bool Serializing = true;
         private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
         {
