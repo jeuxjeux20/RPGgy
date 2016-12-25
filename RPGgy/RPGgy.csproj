@@ -33,9 +33,16 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>RPGgy.Program</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Discord.Addons.InteractiveCommands, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Discord.Addons.InteractiveCommands.1.1.0-ci-00017\lib\netstandard1.3\Discord.Addons.InteractiveCommands.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Discord.Addons.Paginator, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Addons.Paginator.1.2.0-ci-00005\lib\netstandard1.3\Discord.Addons.Paginator.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Discord.Net.Commands, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -173,6 +180,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Game\Items\Core\ItemBase.cs" />
+    <Compile Include="Game\Shop.cs" />
     <Compile Include="Misc\Tools\ASCIIBar.cs" />
     <Compile Include="CommandHandler.cs" />
     <Compile Include="Game\Fights\FightContext.cs" />

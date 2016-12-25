@@ -11,5 +11,7 @@ namespace RPGgy.Game.Items
         }
 
         public override ItemType? Type { get; } = ItemType.Attack;
+
+        
     }
 }

@@ -32,7 +32,7 @@ namespace RPGgy.Game
                     sr.BaseStream.Position = 0; // return back to the start of the file
                     var myLovelyReader = new JsonTextReader(sr); // get a lovely jsontextreader for you <3
                     WarriorsList =                                                                              // My variable will be set as...
-                        JsonSerializer.Create().Deserialize<ObservableCollection<WarriorUser>>(myLovelyReader); // a deserialization using my lovely reader ! 
+                        JsonSerializer.Create(JsonSerializerSettings).Deserialize<ObservableCollection<WarriorUser>>(myLovelyReader); // a deserialization using my lovely reader ! 
                     Program.Log(new LogMessage(LogSeverity.Info, "JSONParse", "Parsed with success"));
                 }
             }

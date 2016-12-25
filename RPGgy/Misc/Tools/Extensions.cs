@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Discord;
+using RPGgy.Game.Items.Core;
 
 namespace RPGgy.Misc.Tools
 {
@@ -15,6 +16,11 @@ namespace RPGgy.Misc.Tools
                 var kek = await message;
                 await Task.Delay(milliseconds);
                 await kek.DeleteAsync();
+        }
+
+        public static bool CanBeEquipped(this ItemType type)
+        {
+            return type == ItemType.Attack || type == ItemType.Defense;
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -75,10 +76,15 @@ namespace RPGgy.Game.Player
             if (attitem == null || defitem == null)
                 Program.Log(new LogMessage(LogSeverity.Debug, "GameCtor", "god damn"));
             Died += WarriorUser_Died;
-
+            Inventory.CollectionChanged += Inventory_CollectionChanged;
         }
 
-        public List<IItem> Inventory { get; } = new List<IItem>();
+        private static void Inventory_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            GameContext.SerializeMapped();
+        }
+
+        public ObservableCollection<ItemBase> Inventory { get; set; } = new ObservableCollection<ItemBase>();
         public event PropertyChangedEventHandler PropertyChanged;
         public uint StatPoints { get; set; }
 
@@ -102,6 +108,12 @@ namespace RPGgy.Game.Player
                 if (value <= 0)
                 {
                     Died?.Invoke(this, null);
+                    Task.Run(async () =>
+                    {
+                        var someoneDied = AttachedFightContext?.SomeoneDied(this);
+                        if (someoneDied != null)
+                            await someoneDied;
+                    }); 
                     _lifePoints = 0;
                 }
                 else if (value > MaxLife)
@@ -173,7 +185,7 @@ namespace RPGgy.Game.Player
             float mult;
             if (timeTook != null)
             {
-                mult = (float)Math.Max(timeTook.Value.TotalSeconds / 20,0.95);
+                mult = (float)Math.Max(timeTook.Value.TotalSeconds / 20, 0.95);
             }
             else
             {
@@ -186,10 +198,10 @@ namespace RPGgy.Game.Player
                 : AttackTotal;
             int kek;
             entity.LifePoints -= kek =
-                                                (int) (Math.Max(
+                                                (int)(Math.Max(
                                                            moarAttack * (Randomiser.Next(1, 25) / 100 + 1) +
                                                            Randomiser.Next(1, 3) - entity.DefenseTotal,
-                                                           Randomiser.Next(1,entity.Level)) / mult);
+                                                           Randomiser.Next(1, entity.Level)) / mult);
 
             return new Tuple<int, bool>(kek, isCrit);
         }
@@ -260,6 +272,11 @@ namespace RPGgy.Game.Player
             this.LifePoints = changes.LifePointsChange ?? this.LifePoints;
             this.AttItem = changes.AttackItemChange ?? AttItem;
             DefItem = changes.DefenseItemChange ?? DefItem;
+            if (changes.ItemsToAdd == null) return;
+            foreach (ItemBase item in changes.ItemsToAdd)
+            {
+                Inventory.Add(item);
+            }
         }
         //public static WarriorUser operator +(WarriorUser warrior, ShopChanges changes)
         //{
@@ -291,6 +308,7 @@ namespace RPGgy.Game.Player
             public AttackItem AttackItemChange { get; set; } = null;
             public DefenseItem DefenseItemChange { get; set; } = null;
             public int? LifePointsChange { get; set; } = null;
+            public IEnumerable<IItem> ItemsToAdd { get; set; } = null;
         }
 
         [Serializable]

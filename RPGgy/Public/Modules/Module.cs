@@ -18,6 +18,9 @@ using RPGgy.Game.Player;
 using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
 using Discord.Addons.InteractiveCommands;
+using Discord.Addons.Paginator;
+using RPGgy.Game.Items;
+using RPGgy.Game.Items.Core;
 using RPGgy.Public.Modules.Tools;
 using ParameterInfo = Discord.Commands.ParameterInfo;
 
@@ -29,9 +32,11 @@ namespace RPGgy.Public.Modules
     public class PublicModule : ModuleBase
     {
         private InteractiveService Interactive { get; }
-        public PublicModule(InteractiveService inter)
+        protected PaginationService Paginator { get; }
+        public PublicModule(InteractiveService inter, PaginationService page)
         {
             Interactive = inter;
+            Paginator = page;
         }
         [Command("createuser")]
         [Summary("Creates a new user in the warrior list")]
@@ -51,15 +56,6 @@ namespace RPGgy.Public.Modules
             }
         }
 
-        [Command("lol")]
-        [Summary("lol")]
-        public async Task Lol()
-        {
-            await ReplyAsync("lol ?");
-            var kek = await Interactive.WaitForMessage(Context.User,
-                                                       Context.Channel);
-            await ReplyAsync($"KEEEEEK : {kek.Content}");
-        }
 
         [Command("reloadjson")]
         [Summary("Reloads the json")]
@@ -96,8 +92,8 @@ namespace RPGgy.Public.Modules
             int beforeMult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult); // the difference matters !
             int finalResult = 100 + (int)((int)(e.WhoDiedUser.Level * randomMult) * 3 * levelMult * randomMult); // aaa maybe
             uint goldStolen = (uint)
-            (e.WhoDiedUser is IWarriorUser ? 
-            Math.Min(e.WhoDiedUser.Gold / (float)8,e.WhoDiedUser.Gold) * levelMult :
+            (e.WhoDiedUser is IWarriorUser ?
+            Math.Min(e.WhoDiedUser.Gold / (float)8, e.WhoDiedUser.Gold) * levelMult :
             e.WhoDiedUser.Gold);
             await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($@"Woo ! {e.WhoDiedUser.Name} died !
 Rewards for {e.WinUser.Name} :
@@ -108,10 +104,10 @@ Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
             e.WhoDiedUser.Gold -= goldStolen;
             e.WinUser.Gold += goldStolen;
         };
-//            fight.OnTurnChanged += (sender, e) => // see later for combining attack and turn changes.
-//            {
-//                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !"));
-//            };
+            //            fight.OnTurnChanged += (sender, e) => // see later for combining attack and turn changes.
+            //            {
+            //                await RateLimitTools.RetryRatelimits(async () => await ReplyAsync($":crossed_swords: It's now {e.CurrentTurnUser.AttachedUser.Mention}'s turn !"));
+            //            };
         }
 
         [Command("leavebattle"), Alias("surrender")]
@@ -125,7 +121,7 @@ Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
             user.LifePoints = 0;
         }
 
-        [Command("heal",RunMode = RunMode.Async)]
+        [Command("heal", RunMode = RunMode.Async)]
         [Summary("heals yourself")]
         [MustBeRegistered]
         [MusntBeInFight]
@@ -137,17 +133,17 @@ Gold stolen from {e.WhoDiedUser.Name} : {goldStolen}."));
 Type `RPG.yes` or `RPG.no`");
             var messageContainsResponsePrecondition = new MessageContainsResponsePrecondition("RPG.yes", "RPG.no",
                                                                                               "RPG.confirm");
-            
+
             var result = await Interactive.WaitForMessage(Context.User,
                                                     Context.Channel,
                                                     TimeSpan.FromSeconds(6),
                                                     messageContainsResponsePrecondition);
             if (result?.Content == "RPG.yes" || result?.Content == "RPG.confirm") // true while it's not fixed :(
             {
-                await user.Buy(20,new WarriorUser.ShopChanges
-                                  {
-                                      LifePointsChange = user.MaxLife
-                                  }, Context.Channel);
+                await user.Buy(20, new WarriorUser.ShopChanges
+                {
+                    LifePointsChange = user.MaxLife
+                }, Context.Channel);
 
             }
             else
@@ -212,7 +208,137 @@ Type `RPG.yes` or `RPG.no`");
 
             return Task.CompletedTask;
         }
+        [Group("Inventory")]
+        public class InventoryModule : PublicModule
+        {
+            private PaginationService PaginationService { get; }
+            private InteractiveService Interaction { get; }
+            public InventoryModule(InteractiveService inter, PaginationService page) : base(inter, page)
+            {
+                PaginationService = page;
+                Interaction = inter;
+            }
 
+            [Command("list",RunMode = RunMode.Async)]
+            [Summary("Get a list m8")]
+            [MustBeRegistered]
+            public async Task List()
+            {
+                var user = WarriorUser.GetUser(Context.User);
+                var keak = new List<string>
+                                {
+                                    "Inventory : "
+                                };
+                keak.AddRange(user.Inventory.Select(item1 => item1.ToString()));
+                var temp = new List<string> { "" };
+                var s = 0;
+                var builder = new StringBuilder();
+                for (var i = 0; i < keak.Count; i++)
+                {
+
+                    if (i < 8 * (s + 1))
+                        // temp[s] += keak[i] + "\n";
+                        builder.AppendLine($"{(i == 0 ? "" : i.ToString())}. " + keak[i]);
+                    else
+                    {
+                        temp[s] = builder.ToString();
+                        builder.Clear();
+                        temp.Add("");
+                        s++;
+                    }
+                }
+                if (s == 0)
+                    temp[0] = builder.ToString();
+                await PaginationService.SendPaginatedMessage(Context.Channel, temp.AsReadOnly(), Context.User);
+            }
+
+            [Command("equip")]
+            [Summary("Equip something m8")]
+            [MustBeRegistered]
+            [MusntBeInFight]
+            public async Task Equip(int index)
+            {
+                var user = WarriorUser.GetUser(Context.User);
+                ItemBase item;
+                try
+                {
+                    item = user.Inventory[index - 1];
+                    if (!(item.Type ?? ItemType.Unknown).CanBeEquipped())
+                        return;
+                }
+                catch
+                {
+                    await ReplyAsync("The following item wasn't found.");
+                    return;
+                }
+                if (item.Type == ItemType.Attack)
+                {
+                    user.Inventory.Add(user.AttItem);
+                    user.AttItem = item.ToAttackItem();
+                    user.Inventory.Remove(item);
+                }
+                else if (item.Type == ItemType.Defense)
+                {                   
+                        user.Inventory.Add(user.DefItem);
+                    user.DefItem = item.ToDefenseItem();
+                        user.Inventory.Remove(item);
+                }
+                await Context.Message.AddReactionAsync("✅");
+            }
+        }
+
+        [Group("shop")]
+        public class ShopModule : PublicModule
+        {
+            private PaginationService PaginationService { get; }
+            private InteractiveService Interaction { get; }
+            public ShopModule(InteractiveService inter, PaginationService page) : base(inter, page)
+            {
+                Interaction = inter;
+                PaginationService = page;
+            }
+
+            [Command("list", RunMode = RunMode.Async)]
+            [Summary("gets a list of everything on da shop m8")]
+            public async Task List()
+            {
+                await PaginationService.SendPaginatedMessage(Context.Channel, Shop.PaginatedShopCollection(), Context.User);
+            }
+
+            [Command("buy", RunMode = RunMode.Async)]
+            [Summary("buy buy")]
+            [MustBeRegistered()]
+            public async Task Buy(int index)
+            {
+                Tuple<ItemBase, Shop.ShopInfo> tup;
+                var warrior = WarriorUser.GetUser(Context.User);
+                try
+                {
+                    tup = Shop.GetItem(index);
+                }
+                catch
+                {
+                    await ReplyAsync("Product not found");
+                    return;
+                }
+                if (tup.Item2.Value > warrior.Gold)
+                {
+                    await ReplyAsync("You don't have enough money to buy this");
+                    return;
+                }
+                await ReplyAsync(Shop.BuyString(index,warrior.Gold));
+                var kek = await Interaction.WaitForMessage(Context.User, Context.Channel, TimeSpan.FromSeconds(10),
+                                                     new MessageContainsResponsePrecondition("RPG.yes", "RPG.no"));
+                if (kek.Content == "RPG.yes")
+                {
+                    await Shop.BuyItem(index, warrior, Context.Channel);
+                }
+                else
+                {
+                    await ReplyAsync("Cancelled.");
+                }
+            }
+        }
         [Command("usepoint")]
         [Summary("Use a stat point ;)")]
         [MustBeRegistered]
@@ -411,6 +537,7 @@ Type `RPG.yes` or `RPG.no`");
         [Command("say")]
         [Alias("echo")]
         [Summary("Echos the provided input")]
+        [Cooldowned(100000)] // trololol
         public async Task Say([Remainder] string input)
         {
             if (Context.User.IsBot) return;

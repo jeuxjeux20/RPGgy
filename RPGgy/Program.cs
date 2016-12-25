@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Discord;
 using Discord.Addons.InteractiveCommands;
+using Discord.Addons.Paginator;
 using Discord.Commands;
 using Discord.WebSocket;
 using RPGgy.Game;
@@ -64,6 +65,7 @@ namespace RPGgy
 
             Map.Add(Client);
             Map.Add(new InteractiveService(Client));
+            Map.Add(new PaginationService(Client));
             Handler = new CommandHandler();
             await Handler.Install(Map);
 

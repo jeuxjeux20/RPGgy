@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Windows.Forms.VisualStyles;
+using Newtonsoft.Json;
 
 namespace RPGgy.Game.Items.Core
 {
@@ -10,12 +13,13 @@ namespace RPGgy.Game.Items.Core
                                                                             {ItemType.Defense, "DEF" },
                                                                             {ItemType.Unknown, "???" }
                                                                         };
-        public ItemBase(string name, int val, ushort? defaultDurability = 500)
+        [JsonConstructor]
+        public ItemBase(string name, int val, ushort? defaultDurability = 500,ItemType type = ItemType.Unknown)
         {
             Name = name;
             Durability = defaultDurability;
             Value = val;
-            
+            Type = type;
         }
         public int Value { get; set; }
         public string Name { get; set; }
@@ -25,6 +29,19 @@ namespace RPGgy.Game.Items.Core
         {
             return
                 $"**{Name}** : {Value}{ShortenedDictionary[Type ?? ItemType.Unknown]} {(Durability == null ? "" : $"Durability : {Durability}")}";
+        }
+
+        public AttackItem ToAttackItem()
+        {
+            if (this.Type != ItemType.Attack)
+                throw new InvalidCastException();
+            return new AttackItem(Name,Value,Durability);
+        }
+        public DefenseItem ToDefenseItem()
+        {
+            if (this.Type != ItemType.Defense)
+                throw new InvalidCastException();
+            return new DefenseItem(Name, Value, Durability);
         }
     }
 }
