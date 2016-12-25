@@ -95,7 +95,7 @@ namespace RPGgy.Game
         {
             Task.Run(async () => { await Serialize(); });
         }
-        private static async Task Serialize()
+        public static async Task Serialize()
         {
             await IsBusy.WaitAsync();
             using (var sw = new StreamWriter("shop.json", false)) // we init again

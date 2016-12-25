@@ -12,8 +12,9 @@ namespace RPGgy.Game
 {
     public static class GameContext
     {
+        private static Timer _serializationTimer;
         private static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
-        public static bool Serializing = true;
+
         private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
         {
             MissingMemberHandling = MissingMemberHandling.Ignore,
@@ -46,7 +47,15 @@ namespace RPGgy.Game
             }           
             IsBusy.Release();
             WarriorsList.CollectionChanged += WarriorsList_CollectionChanged;
-            Serializing = false;
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(15000);
+                    await Serialize();
+                    await Shop.Serialize();
+                }
+            });
         }
 
         [JsonProperty("players")]
@@ -58,7 +67,8 @@ namespace RPGgy.Game
                 await IsBusy.WaitAsync();
                 await Program.Log(new LogMessage(LogSeverity.Info, "Game", "Woah i got called :o"));
                 IsBusy.Release();                           
-                await Serialize();               
+                await Serialize(); 
+                          
         }
 
         public static void SerializeMapped()
@@ -68,13 +78,11 @@ namespace RPGgy.Game
         public static async Task Serialize()
         {
             await IsBusy.WaitAsync();
-            Serializing = true; // ignore this :p
             using (var sw = new StreamWriter("warriors.json", false)) // we init again
             {                
                 JsonSerializer.Create(JsonSerializerSettings).Serialize(sw, WarriorsList); // we deserialize, jsonSerializerSettings is OPTIONAL
             }
             IsBusy.Release();
-            Serializing = false; // also this
         }
 
         public static async Task Deserialize()
@@ -86,7 +94,6 @@ namespace RPGgy.Game
 
         private static void DeserializeCore()
         {
-            Serializing = true;
             using (var sr = new StreamReader("warriors.json"))
             {
                 if (sr.ReadToEnd().Length < 2) throw new FileNotFoundException();
@@ -97,7 +104,6 @@ namespace RPGgy.Game
                     JsonSerializer.Create().Deserialize<ObservableCollection<WarriorUser>>(myLovelyReader);
                 Program.Log(new LogMessage(LogSeverity.Info, "JSONParse", "Parsed with success"));
             }
-            Serializing = false;
         }
     }
 }

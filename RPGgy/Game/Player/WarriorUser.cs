@@ -81,7 +81,7 @@ namespace RPGgy.Game.Player
 
         private static void Inventory_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            GameContext.SerializeMapped();
+            // GameContext.SerializeMapped();
         }
 
         public ObservableCollection<ItemBase> Inventory { get; set; } = new ObservableCollection<ItemBase>();
@@ -124,7 +124,7 @@ namespace RPGgy.Game.Player
                 {
                     _lifePoints = value;
                 }
-                GameContext.SerializeMapped();
+                // GameContext.SerializeMapped();
             }
         }
 
@@ -227,7 +227,7 @@ namespace RPGgy.Game.Player
             {
                 throw new ArgumentException("Wait m8, i don't see eitherr attack or defense -,-");
             }
-            await GameContext.Serialize();
+            // await GameContext.Serialize();
         }
 
         private async void WarriorUser_LevelUpEvent(object sender, LevelUpEventArgs e)
@@ -255,7 +255,7 @@ namespace RPGgy.Game.Player
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             // Program.Log(new LogMessage(LogSeverity.Info, "Warrior", "WOAH! i got called ;)"));
-            await GameContext.Serialize();
+            // await GameContext.Serialize();
         }
 
         /// <summary>
