@@ -79,9 +79,14 @@ namespace RPGgy.Game.Player
             Inventory.CollectionChanged += Inventory_CollectionChanged;
         }
 
-        private static void Inventory_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private  void Inventory_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             // GameContext.SerializeMapped();
+            foreach (var thing in Inventory)
+            {
+                if (thing.IsDummy)
+                    Inventory.Remove(thing);
+            }
         }
 
         public ObservableCollection<ItemBase> Inventory { get; set; } = new ObservableCollection<ItemBase>();
@@ -209,7 +214,7 @@ namespace RPGgy.Game.Player
         public int MaxLife { get; set; } = DefaultMaxLife;
         public bool IsDead => LifePoints <= 0;
 
-        public async Task UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
+        public Task UseStatPoint(StatPoint typeStatPoint, ushort count = 1)
         {
             if (StatPoints <= 0) throw new NoStatpointsException();
             if (count > StatPoints) throw new NotEnoughStatpointsException();
@@ -228,6 +233,7 @@ namespace RPGgy.Game.Player
                 throw new ArgumentException("Wait m8, i don't see eitherr attack or defense -,-");
             }
             // await GameContext.Serialize();
+            return Task.CompletedTask;
         }
 
         private async void WarriorUser_LevelUpEvent(object sender, LevelUpEventArgs e)
@@ -237,6 +243,21 @@ namespace RPGgy.Game.Player
             var thing = e.Warrior.AttachedUser.CreateDMChannelAsync().Result; // ensure locking              
             string waitWhat = $"You level-uped to {e.Level}";
             await RateLimitTools.RetryRatelimits(async () => await thing.SendMessageAsync(waitWhat));
+        }
+
+        public ItemBase FromItemType(ItemType type)
+        {
+            switch (type)
+            {
+                case ItemType.Attack:
+                    return AttItem;
+                case ItemType.Defense:
+                    return DefItem;
+                case ItemType.Unknown:
+                    return null;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
         }
 
         private async void WarriorUser_Died(object sender, EventArgs e)
@@ -251,7 +272,7 @@ namespace RPGgy.Game.Player
         }
 
         [NotifyPropertyChangedInvocator]
-        private async void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             // Program.Log(new LogMessage(LogSeverity.Info, "Warrior", "WOAH! i got called ;)"));
@@ -272,11 +293,13 @@ namespace RPGgy.Game.Player
             this.LifePoints = changes.LifePointsChange ?? this.LifePoints;
             this.AttItem = changes.AttackItemChange ?? AttItem;
             DefItem = changes.DefenseItemChange ?? DefItem;
-            if (changes.ItemsToAdd == null) return;
-            foreach (ItemBase item in changes.ItemsToAdd)
+            if (changes.ItemsToAdd != null)
+            foreach (var item1 in changes.ItemsToAdd)
             {
+                var item = (ItemBase) item1;
                 Inventory.Add(item);
             }
+            SetAuto(changes.AutoChange);
         }
         //public static WarriorUser operator +(WarriorUser warrior, ShopChanges changes)
         //{
@@ -303,12 +326,34 @@ namespace RPGgy.Game.Player
             }
         }
 
+        public void SetAuto(ItemBase wut)
+        {
+            if (wut == null) return;
+            switch (wut.Type)
+            {
+                case ItemType.Attack:
+                    AttItem = wut.ToAttackItem();
+                    break;
+                case ItemType.Defense:
+                    DefItem = wut.ToDefenseItem();
+                    break;
+                case ItemType.Unknown:
+                    Inventory.Add(wut);
+                    break;
+                case null:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
         public class ShopChanges
         {
             public AttackItem AttackItemChange { get; set; } = null;
             public DefenseItem DefenseItemChange { get; set; } = null;
             public int? LifePointsChange { get; set; } = null;
             public IEnumerable<IItem> ItemsToAdd { get; set; } = null;
+            public ItemBase AutoChange { get; set; } = null;
         }
 
         [Serializable]

@@ -9,14 +9,14 @@ namespace RPGgy.Game.Items.Core
         [JsonProperty("name")]
         string Name { get; set; }
 
-        [JsonProperty("durability")]
-        ushort? Durability { get; set; }
-
         [JsonProperty("type")]
         ItemType? Type { get; }
 
         [JsonProperty("value")]
         int Value { get; set; }
+
+        [JsonProperty("isDummy")]
+        bool IsDummy { get; }
     }
 
     public enum ItemType

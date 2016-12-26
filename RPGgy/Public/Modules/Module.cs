@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
@@ -19,11 +20,11 @@ using RPGgy.Misc.Tools;
 using RPGgy.Permissions.Attributes;
 using Discord.Addons.InteractiveCommands;
 using Discord.Addons.Paginator;
+using Discord.API;
 using RPGgy.Game.Items;
 using RPGgy.Game.Items.Core;
 using RPGgy.Public.Modules.Tools;
 using ParameterInfo = Discord.Commands.ParameterInfo;
-
 // ReSharper disable UnusedMember.Global
 // Because m8, you didn't know that discord.net uses some magic that we call reflection ! No, it's not about mirrors.
 
@@ -31,12 +32,14 @@ namespace RPGgy.Public.Modules
 {
     public class PublicModule : ModuleBase
     {
+        private Random Randomiser { get; } = new Random();
         private InteractiveService Interactive { get; }
-        protected PaginationService Paginator { get; }
+        private PaginationService Paginator { get; }
         public PublicModule(InteractiveService inter, PaginationService page)
         {
             Interactive = inter;
             Paginator = page;
+            
         }
         [Command("createuser")]
         [Summary("Creates a new user in the warrior list")]
@@ -187,6 +190,129 @@ Type `RPG.yes` or `RPG.no`");
 
         }
 
+        [Command("upgrade",RunMode = RunMode.Async)]
+        [Summary("Upgrade your items")]
+        [MustBeRegistered]
+        [MusntBeInFight]
+        public async Task Upgrade(string which)
+        {
+            ItemType what;
+            switch (which.ToLower())
+            {
+                case "attack":
+                    what = ItemType.Attack;
+                    break;
+                case "defense":
+                    what = ItemType.Defense;
+                    break;
+                default:
+                    await ReplyAsync("You didn't provided either attack or defense");
+                    return;
+            }
+
+            var user = WarriorUser.GetUser(Context.User);
+            if (user.FromItemType(what).IsDummy)
+            {
+                await ReplyAsync("You don't havve any items :'(");
+                return;
+            }
+            ItemBase item = what == ItemType.Attack ? (ItemBase) user.AttItem : user.DefItem;
+            uint cost = (uint) (item.Value * 0.45 * Math.Max(user.Level / 10,1)) + 10;
+            if (cost > user.Gold)
+            {
+                await ReplyAsync($"You don't have enough gold. Needed is {cost:## 'gold'}");
+                return;
+            }
+            await ReplyAsync($"Are you sure you wanna upgrade your {what} item for {cost:## 'gold'} ? `RPG.(yes/no)`");
+            var response = await Interactive.WaitForMessage(Context.User, Context.Channel,
+                                                      preconditions:
+                                                      new MessageContainsResponsePrecondition("RPG.yes", "RPG.no"));
+            var itemModifierCalculation = 3 + item.Value / 25 * (Randomiser.Next(0,30) + 1);
+            if (response?.Content == "RPG.yes")
+            {
+                await user.Buy(cost, new WarriorUser.ShopChanges
+                               {
+                                   AutoChange = item.Modify(m => m.ValueModifier = itemModifierCalculation)                                   
+                               },Context.Channel);
+                await Task.Delay(540);
+                await ReplyAsync(
+                    $":white_check_mark: Added to your item's \"{item.Name}\" efficiency : {itemModifierCalculation} !");
+
+            }
+        }
+
+        [Command("unequip")]
+        [Summary("Unequip something u can read the command ?")]
+        [MustBeRegistered]
+        public async Task Unequip(string whatf)
+        {
+            var user = WarriorUser.GetUser(Context.User);
+            ItemType what;
+            switch (whatf.ToLower())
+            {
+                case "attack":
+                    what = ItemType.Attack;
+                    break;
+                case "defense":
+                    what = ItemType.Defense;
+                    break;
+                default:
+                    await ReplyAsync("You didn't provided either attack or defense");
+                    return;
+            }
+            if (user.FromItemType(what).IsDummy)
+            {
+                await ReplyAsync("You don't havve any items :'(");
+                return;
+            }
+            if (what == ItemType.Attack)
+            {
+                user.Inventory.Add(user.AttItem);
+                user.AttItem = new AttackItem("None", 0, true);
+            }
+            else
+            {
+                user.Inventory.Add(user.DefItem);
+                user.DefItem = new DefenseItem("None",0,true);
+            }
+            await ReplyAsync(":white_check_mark: Succesfully unequipped");
+        }
+
+        [Command("itemrename"),Alias("ir","renameitem")]
+        [Summary("an awesome command !")]
+        [MustBeRegistered]
+        public async Task ItemRename(string which,[Remainder] string renamedString)
+        {
+            var user = WarriorUser.GetUser(Context.User);
+            ItemType what;
+            switch (which.ToLower())
+            {
+                case "attack":
+                    what = ItemType.Attack;
+                    break;
+                case "defense":
+                    what = ItemType.Defense;
+                    break;
+                default:
+                    await ReplyAsync("You didn't provided either attack or defense");
+                    return;
+            }
+            if (user.FromItemType(what).IsDummy)
+            {
+                await ReplyAsync("You don't havve any items :'(");
+                return;
+            }
+            if (what == ItemType.Attack)
+            {
+                user.AttItem.Name = renamedString;
+            }
+            else
+            {
+                user.DefItem.Name = renamedString;
+            }
+            await ReplyAsync($":white_check_mark: The name of your {what} item has been changed to `{renamedString}`");
+        }
+
         [Command("forcejson")]
         [Summary("Forces the json to serialize")]
         [RequireOwner]
@@ -227,7 +353,7 @@ Type `RPG.yes` or `RPG.no`");
                 var user = WarriorUser.GetUser(Context.User);
                 var keak = new List<string>
                                 {
-                                    "Inventory : "
+                                    "Inventory : RPG.inventory equip [number] to equip"
                                 };
                 keak.AddRange(user.Inventory.Select(item1 => item1.ToString()));
                 var temp = new List<string> { "" };
@@ -250,6 +376,38 @@ Type `RPG.yes` or `RPG.no`");
                 if (s == 0)
                     temp[0] = builder.ToString();
                 await PaginationService.SendPaginatedMessage(Context.Channel, temp.AsReadOnly(), Context.User);
+            }
+
+            [Command("sell",RunMode = RunMode.Async)]
+            [Summary("Sell !")]
+            [MustBeRegistered]
+            public async Task Sell(int index,uint price)
+            {
+                var user = WarriorUser.GetUser(Context.User);
+                ItemBase item;
+                try
+                {
+                    item = user.Inventory[index - 1];
+                }
+                catch
+                {
+                    await ReplyAsync("Item not found :/");
+                    return;
+                }
+                if (item.IsDummy)
+                {
+                    await ReplyAsync("You don't havve any items :'(");
+                    return;
+                }
+                await ReplyAsync(
+                    $"Are you SURE you wanna sell {item.Name} for {price:c0} ? This action cannot be undone. `RPG.yes` or `RPG.no`");
+                var response = await Interaction.WaitForMessage(Context.User, Context.Channel, TimeSpan.FromSeconds(15),
+                                                          new MessageContainsResponsePrecondition("RPG.yes", "RPG.no"));
+                if (response.Content == "RPG.yes")
+                {
+                    Shop.SellItemFromUser(item,user,price);
+                    await ReplyAsync("Done !");
+                }
             }
 
             [Command("equip")]

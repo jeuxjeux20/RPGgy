@@ -28,5 +28,6 @@ namespace RPGgy.Game.Player
         [JsonProperty("inventory")]
         ObservableCollection<ItemBase> Inventory { get; set; }
         Task Buy(uint cost, WarriorUser.ShopChanges changes, IMessageChannel channel = null);
+        void SetAuto(ItemBase wut);
     }
 }

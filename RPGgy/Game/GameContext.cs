@@ -12,7 +12,6 @@ namespace RPGgy.Game
 {
     public static class GameContext
     {
-        private static Timer _serializationTimer;
         private static SemaphoreSlim IsBusy = new SemaphoreSlim(1);
 
         private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings

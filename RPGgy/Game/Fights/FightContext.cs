@@ -9,11 +9,11 @@ namespace RPGgy.Game.Fights
 {
     public class TurnChangedEventArgs : EventArgs
     {
-        public TurnChangedEventArgs(IWarriorUser current)
+        public TurnChangedEventArgs(IGameEntity current)
         {
             CurrentTurnUser = current;
         }
-        public IWarriorUser CurrentTurnUser { get; private set; }
+        public IGameEntity CurrentTurnUser { get; private set; }
     }
     public class FightContextTerminatedEventArgs : EventArgs
     {
@@ -30,13 +30,13 @@ namespace RPGgy.Game.Fights
     {
         private readonly Tuple<IUser, IUser> _actualTuple;
         private Stopwatch TimeTook { get; } = new Stopwatch();
-        public FightContext(IWarriorUser attackerParameter, IWarriorUser opponentParameter)
+        public FightContext(IWarriorUser attackerParameter, IGameEntity opponentParameter)
         {
             Attacker = attackerParameter;
             Opponent = opponentParameter;
             Attacker.AttachedFightContext = Opponent.AttachedFightContext = this;
             TurnOfEntity = Attacker;
-            ActualContexts.Add(_actualTuple = new Tuple<IUser, IUser>(Attacker.AttachedUser, Opponent.AttachedUser),
+            ActualContexts.Add(_actualTuple = new Tuple<IUser, IUser>(Attacker.AttachedUser, (Opponent as IWarriorUser)?.AttachedUser),
                                this);
             TimeTook.Start();
         }
@@ -44,16 +44,14 @@ namespace RPGgy.Game.Fights
         public event EventHandler<TurnChangedEventArgs> OnTurnChanged;
 
         private IWarriorUser Attacker { get; }
-        private IWarriorUser Opponent { get; }
+        private IGameEntity Opponent { get; }
         private bool _isSomeoneDead = false;
         public static Dictionary<Tuple<IUser, IUser>, FightContext> ActualContexts { get; } =
             new Dictionary<Tuple<IUser, IUser>, FightContext>();
 
-        public IWarriorUser TurnOfEntity { get; private set; }
+        public IGameEntity TurnOfEntity { get; private set; }
         // Ready guys ? 3, 2, 1... GO ! get, set, then get, then set, that's perfect ! continue ! ; get, set, mmm sir sorry i've hit a semicolon
-        public IUser TurnOfUser => TurnOfEntity.AttachedUser;
-        public IWarriorUser TurnOfEnemy => TurnOfEntity == Attacker ? Opponent : Attacker;
-        public IUser TurnOfEnemyUser => TurnOfEnemy.AttachedUser;
+        public IGameEntity TurnOfEnemy => TurnOfEntity == Attacker ? Opponent : Attacker;
 /*
         private static Random Randomiser { get; } = new Random();
 */

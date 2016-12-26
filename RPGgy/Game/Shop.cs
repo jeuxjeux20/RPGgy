@@ -7,12 +7,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
 using Discord;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using RPGgy.Game.Items;
 using RPGgy.Game.Items.Core;
 using RPGgy.Game.Player;
+using RPGgy.Public.Modules.Tools;
 
 namespace RPGgy.Game
 {
@@ -42,11 +44,13 @@ namespace RPGgy.Game
             public uint Value { get; internal set; }
             public ShopInfo() { }
             [JsonConstructor,UsedImplicitly]            
-            public ShopInfo(int quantity, uint value)
+            public ShopInfo(int quantity, uint value,WarriorUser seller)
             {
                 Quantity = quantity;
                 Value = value;
+                Seller = seller;
             }
+            public WarriorUser Seller { get; set; }
         }
         private static readonly ObservableCollection<Tuple<ItemBase, ShopInfo>> ListOfItemBases =
             new ObservableCollection<Tuple<ItemBase, ShopInfo>>
@@ -141,6 +145,14 @@ Type `RPG.yes` or `RPG.no`";
                                               ItemsToAdd = new List<IItem> {item.Item1}
                                           },channel);
             item.Item2.Quantity--;
+            Task<IDMChannel> dmChannelAsync = item.Item2.Seller?.AttachedUser?.CreateDMChannelAsync();
+            if (dmChannelAsync != null)
+            {
+                item.Item2.Seller.Gold += item.Item2.Value;
+                await (await dmChannelAsync).SendMessageAsync(
+                        $":money_bag: Your item {item.Item1.Name} has been sold for {item.Item2.Value:c0}")
+                    .RetryRatelimits();
+            }
         }
         public new static string ToString()
         {
@@ -154,13 +166,31 @@ Type `RPG.yes` or `RPG.no`";
             return strBuild.ToString();
         }
 
+        public static void SellItemFromUser(ItemBase item, WarriorUser user,uint price)
+        {
+            if (user.Inventory.Any(i => i.Equals(item)))
+            {
+                ListOfItemBases.Add(new Tuple<ItemBase, ShopInfo>(item, new ShopInfo
+                                                                        {
+                                                                            Quantity = 1,
+                                                                            Seller = user,
+                                                                            Value = price
+                                                                        }));
+                
+                user.Inventory.Remove(user.Inventory.FirstOrDefault(i => i.Equals(item)));
+            }
+            else
+            {
+                throw new MissingMemberException("Item not found in user kek");
+            }
+        }
         public static IReadOnlyCollection<string> PaginatedShopCollection()
         {
             var keak = new List<string>
                                 {
-                                    "--- SHOP ---"
+                                    "--- SHOP | RPG.shop buy [number] to buy---"
                                 };
-            keak.AddRange(ListOfItemBases.Select(item => item.Item1 + $" | Quantity : {item.Item2.Quantity} | Price : {item.Item2.Value:C}"));
+            keak.AddRange(ListOfItemBases.Select(item => item.Item1 + $" | Quantity : {item.Item2.Quantity} | Price : {item.Item2.Value:C} | Seller : {item.Item2.Seller?.AttachedUser?.ToString() ?? "No seller"}"));
             var temp = new List<string> { "" };
             var s = 0;
             var builder = new StringBuilder();
