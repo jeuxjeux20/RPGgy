@@ -7,7 +7,7 @@ An RPG bot ! There will be some fighting in there ;)
 * Save data
 * Items
 * Fights against players
-* An item shop (10 %)
+* An item shop
 
 ##Working on
 * Fights for Game entites (60%)
