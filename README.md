@@ -1,7 +1,7 @@
 # RPGgy
 An RPG bot ! There will be some fighting in there ;)
 
-##Features alerady implemented :
+## Features alerady implemented :
 * Players
   * Skill points
 * Save data
@@ -9,5 +9,5 @@ An RPG bot ! There will be some fighting in there ;)
 * Fights against players
 * An item shop
 
-##Working on
+## Working on
 * Fights for Game entites (60%)
